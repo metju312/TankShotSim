@@ -111,7 +111,7 @@ public class BulletsFederate {
 //Metody pomocnicze RTI
 
     private void calculatePosition() {
-        actualPosition = actualPosition++;
+        actualPosition++;
     }
 
     private void sleep(int time) throws InterruptedException {
@@ -164,6 +164,8 @@ public class BulletsFederate {
 
         attributes.add(positionHandle, positionValue);
         LogicalTime logicalTime = convertTime( time );
+
+        log("PociskId: " + actualIdBullet + " , pozycja: " + actualPosition);
         rtiamb.updateAttributeValues(bulletHlaHandle, attributes, "actualize position".getBytes(), logicalTime );
     }
 
@@ -231,7 +233,8 @@ public class BulletsFederate {
         int krok = 0;
         while (fedamb.running) {
             double timeToAdvance = fedamb.federateTime + timeStep;
-            advanceTime(timeToAdvance);
+            advanceTime( 1.0 );
+            //advanceTime(timeToAdvance);
             if(shouldShoot){
                 registerBulletObject();
                 shouldShoot=false;
