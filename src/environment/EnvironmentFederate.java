@@ -2,8 +2,11 @@ package environment;
 
 
 import hla.rti.*;
+import hla.rti.FederationExecutionAlreadyExists;
+import hla.rti.RTIexception;
 import hla.rti.jlc.EncodingHelpers;
 import hla.rti.jlc.RtiFactoryFactory;
+import hla.rti1516e.exceptions.*;
 import org.portico.impl.hla13.types.DoubleTime;
 import org.portico.impl.hla13.types.DoubleTimeInterval;
 
@@ -12,6 +15,7 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.util.Collections;
+import java.util.Random;
 
 public class EnvironmentFederate {
 
@@ -23,33 +27,35 @@ public class EnvironmentFederate {
     private int stock                       = 10;
     private int environmentHlaHandle;
 
-
-    public void runFederate() throws Exception {
-
+// Metody RTI
+    private void initializeFederate(String federateName, String federationName) throws Exception{
+        log("Tworzenie abasadorów i połączenia");
         rtiamb = RtiFactoryFactory.getRtiFactory().createRtiAmbassador();
 
+        log("Stworzenie i dołączenie do Federacji");
         try
         {
             File fom = new File( "tankfed.fed" );
-            rtiamb.createFederationExecution( "ExampleFederation",
+            rtiamb.createFederationExecution( federationName,
                     fom.toURI().toURL() );
-            log( "Created Federation" );
+            log( "Federacja została stworzona" );
         }
         catch( FederationExecutionAlreadyExists exists )
         {
-            log( "Didn't create federation, it already existed" );
+            log( "Federacja już istnieje" );
         }
         catch( MalformedURLException urle )
         {
-            log( "Exception processing fom: " + urle.getMessage() );
+            log( "Błąd podczas wyczytywania modelii FOM: " + urle.getMessage() );
             urle.printStackTrace();
             return;
         }
 
         fedamb = new EnvironmentFederateAmbassador();
-        rtiamb.joinFederationExecution( "EnvironmentFederate", "ExampleFederation", fedamb );
-        log( "Joined Federation as EnvironmentFederate");
+        rtiamb.joinFederationExecution( federateName, federationName, fedamb );
+        log( "Dołaczono do federacji jako " + federateName);
 
+        log("Synchronizacja");
         rtiamb.registerFederationSynchronizationPoint( READY_TO_RUN, null );
 
         while( fedamb.isAnnounced == false )
@@ -60,66 +66,45 @@ public class EnvironmentFederate {
         waitForUser();
 
         rtiamb.synchronizationPointAchieved( READY_TO_RUN );
-        log( "Achieved sync point: " +READY_TO_RUN+ ", waiting for federation..." );
+        log( "Osiągnięto punkt synchronizacji: " +READY_TO_RUN+ ", oczekiwanie na pozostałych federatów..." );
         while( fedamb.isReadyToRun == false )
         {
             rtiamb.tick();
         }
 
+        log("Ustawienia rti");
         enableTimePolicy();
 
         publishAndSubscribe();
 
         registerEnvironmentObject();
 
-        while (fedamb.running) {
-            double timeToAdvance = fedamb.federateTime + timeStep;
-            advanceTime(timeToAdvance);
-
-            if(fedamb.externalEvents.size() > 0) {
-                Collections.sort(fedamb.externalEvents , new ExternalEvent.ExternalEventComparator());
-                for(ExternalEvent externalEvent : fedamb.externalEvents) {
-                    fedamb.federateTime = externalEvent.getTime();
-                    switch (externalEvent.getEventType()) {
-                        case ADD:
-                            this.addToStock(externalEvent.getQty());
-                            break;
-                    }
-                }
-                fedamb.externalEvents.clear();
-            }
-
-            if(fedamb.grantedTime == timeToAdvance) {
-                timeToAdvance += fedamb.federateLookahead;
-                log("Updating stock at time: " + timeToAdvance);
-                updateHLAObject(timeToAdvance);
-                fedamb.federateTime = timeToAdvance;
-            }
-
-            rtiamb.tick();
-        }
-
     }
 
+
+    private void finalizeFederate(String federationName) {
+//        rtiamb.resignFederationExecution( ResignAction.DELETE_OBJECTS );
+//        log( "Resigned from Federation" );
+//        try
+//        {
+//            rtiamb.destroyFederationExecution( federationName );
+//            log( "Federacja została zniszczona" );
+//        }
+//        catch( FederationExecutionDoesNotExist dne )
+//        {
+//            log( "Federacja została już zniszczona" );
+//        }
+//        catch( FederatesCurrentlyJoined fcj )
+//        {
+//            log( "Fedaracja wciąż zaweira federatów" );
+//        }
+    }
+
+//Metody pomocnicze RTI
     public void addToStock(int qty) {
         this.stock += qty;
 
         log("Added "+ qty + " at time: "+ fedamb.federateTime +", current stock: " + this.stock);
-    }
-
-    private void waitForUser()
-    {
-        log( " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" );
-        BufferedReader reader = new BufferedReader( new InputStreamReader(System.in) );
-        try
-        {
-            reader.readLine();
-        }
-        catch( Exception e )
-        {
-            log( "Error while waiting for user input: " + e.getMessage() );
-            e.printStackTrace();
-        }
     }
 
     private void registerEnvironmentObject() throws RTIexception {
@@ -201,17 +186,71 @@ public class EnvironmentFederate {
         return new DoubleTimeInterval( time );
     }
 
+//////////////////////////////
+//Faktyczne metody symulacji//
+
+    private void run(String federateName, String federationName) throws Exception {
+        initializeFederate(federateName,federationName);
+        mainLoop();
+        finalizeFederate(federationName);
+    }
+
+    private void mainLoop() throws RTIexception {
+        while (fedamb.running) {
+            double timeToAdvance = fedamb.federateTime + timeStep;
+            advanceTime(timeToAdvance);
+
+            if(fedamb.externalEvents.size() > 0) {
+                Collections.sort(fedamb.externalEvents , new ExternalEvent.ExternalEventComparator());
+                for(ExternalEvent externalEvent : fedamb.externalEvents) {
+                    fedamb.federateTime = externalEvent.getTime();
+                    switch (externalEvent.getEventType()) {
+                        case ADD:
+                            this.addToStock(externalEvent.getQty());
+                            break;
+                    }
+                }
+                fedamb.externalEvents.clear();
+            }
+
+            if(fedamb.grantedTime == timeToAdvance) {
+                timeToAdvance += fedamb.federateLookahead;
+                log("Updating stock at time: " + timeToAdvance);
+                updateHLAObject(timeToAdvance);
+                fedamb.federateTime = timeToAdvance;
+            }
+
+            rtiamb.tick();
+        }
+    }
+
+    public static void main(String[] args) {
+        String federateName = "Otoczenie";
+        try {
+            new EnvironmentFederate().run(federateName, "Federacja");
+        } catch (Exception rtie) {
+            rtie.printStackTrace();
+        }
+    }
+
+//Pomocnicze//
     private void log( String message )
     {
         System.out.println( "EnvironmentFederate   : " + message );
     }
 
-    public static void main(String[] args) {
-        try {
-            new EnvironmentFederate().runFederate();
-        } catch (Exception e) {
+    private void waitForUser()
+    {
+        log( " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" );
+        BufferedReader reader = new BufferedReader( new InputStreamReader(System.in) );
+        try
+        {
+            reader.readLine();
+        }
+        catch( Exception e )
+        {
+            log( "Error while waiting for user input: " + e.getMessage() );
             e.printStackTrace();
         }
     }
-
 }
