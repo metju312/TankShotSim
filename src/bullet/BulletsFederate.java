@@ -2,8 +2,17 @@ package bullet;
 
 
 import hla.rti.*;
+import hla.rti.AttributeHandleSet;
+import hla.rti.FederatesCurrentlyJoined;
+import hla.rti.FederationExecutionAlreadyExists;
+import hla.rti.LogicalTime;
+import hla.rti.LogicalTimeInterval;
+import hla.rti.RTIambassador;
+import hla.rti.RTIexception;
 import hla.rti.jlc.EncodingHelpers;
 import hla.rti.jlc.RtiFactoryFactory;
+import hla.rti1516e.*;
+import hla.rti1516e.exceptions.*;
 import org.portico.impl.hla13.types.DoubleTime;
 import org.portico.impl.hla13.types.DoubleTimeInterval;
 
@@ -26,31 +35,35 @@ public class BulletsFederate {
     private int actualPosition = 0;
     private int actualIdBullet = 1;
 
-    public void runFederate() throws RTIexception, InterruptedException {
+// Metody RTI
+    private void initializeFederate(String federateName, String federationName) throws Exception{
+        log("Tworzenie abasadorów i połączenia");
         rtiamb = RtiFactoryFactory.getRtiFactory().createRtiAmbassador();
 
+        log("Stworzenie i dołączenie do Federacj");
         try
         {
             File fom = new File( "tankfed.fed" );
             rtiamb.createFederationExecution( "ExampleFederation",
                     fom.toURI().toURL() );
-            log( "Created Federation" );
+            log( "Federacja została stworzona" );
         }
         catch( FederationExecutionAlreadyExists exists )
         {
-            log( "Didn't create federation, it already existed" );
+            log( "Federacja już istnieje" );
         }
         catch( MalformedURLException urle )
         {
-            log( "Exception processing fom: " + urle.getMessage() );
+            log( "Błąd podczas wczytywania modelii FOM: " + urle.getMessage() );
             urle.printStackTrace();
             return;
         }
 
         fedamb = new BulletsFederateAmbassador();
         rtiamb.joinFederationExecution( "BulletsFederate", "ExampleFederation", fedamb );
-        log( "Joined Federation as BulletsFederate");
+        log( "Dołaczono do federacji jako " + federateName);
 
+        log("Synchronizacja");
         rtiamb.registerFederationSynchronizationPoint( READY_TO_RUN, null );
 
         while( fedamb.isAnnounced == false )
@@ -61,36 +74,41 @@ public class BulletsFederate {
         waitForUser();
 
         rtiamb.synchronizationPointAchieved( READY_TO_RUN );
-        log( "Achieved sync point: " +READY_TO_RUN+ ", waiting for federation..." );
+        log( "Osiągnięto punkt synchronizacji: " +READY_TO_RUN+ ", oczekiwanie na pozostałych federatów..." );
+
+
         while( fedamb.isReadyToRun == false )
         {
             rtiamb.tick();
         }
 
+        log("Ustawienia rti");
         enableTimePolicy();
 
         publishAndSubscribe();
 
-        int krok = 0;
-        while (fedamb.running) {
-            double timeToAdvance = fedamb.federateTime + timeStep;
-            advanceTime(timeToAdvance);
-            if(shouldShoot){
-                registerBulletObject();
-                shouldShoot=false;
-            }
-            //TODO tu jakiś inny czas trzeba dać
-            updateHLAObject(timeToAdvance);
-            sleep(1000);
-            rtiamb.tick();
-            krok++;
-            if(krok%8==0){
-                //TODO zniszczyć poprzedni obiekt
-                //shouldShoot=true;
-            }
-        }
-
     }
+
+
+    private void finalizeFederate(String federationName) {
+//        rtiamb.resignFederationExecution( hla.rti1516e.ResignAction.DELETE_OBJECTS );
+//        log( "Resigned from Federation" );
+//        try
+//        {
+//            rtiamb.destroyFederationExecution( federationName );
+//            log( "Federacja została zniszczona" );
+//        }
+//        catch( hla.rti1516e.exceptions.FederationExecutionDoesNotExist dne )
+//        {
+//            log( "Federacja została już zniszczona" );
+//        }
+//        catch( hla.rti1516e.exceptions.FederatesCurrentlyJoined fcj )
+//        {
+//            log( "Fedaracja wciąż zaweira federatów" );
+//        }
+    }
+
+//Metody pomocnicze RTI
 
     private void calculatePosition() {
         actualPosition = actualPosition++;
@@ -98,21 +116,6 @@ public class BulletsFederate {
 
     private void sleep(int time) throws InterruptedException {
         Thread.sleep(time);
-    }
-
-    private void waitForUser()
-    {
-        log( " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" );
-        BufferedReader reader = new BufferedReader( new InputStreamReader(System.in) );
-        try
-        {
-            reader.readLine();
-        }
-        catch( Exception e )
-        {
-            log( "Error while waiting for user input: " + e.getMessage() );
-            e.printStackTrace();
-        }
     }
 
     private void enableTimePolicy() throws RTIexception
@@ -133,6 +136,22 @@ public class BulletsFederate {
         {
             rtiamb.tick();
         }
+    }
+
+    private void publishAndSubscribe() throws RTIexception {
+        int bulletHandle = rtiamb.getObjectClassHandle("ObjectRoot.Bullet");
+        int idbulletHandle = rtiamb.getAttributeHandle( "idbullet", bulletHandle );
+        int positionHandle = rtiamb.getAttributeHandle( "position", bulletHandle );
+
+        AttributeHandleSet attributes = RtiFactoryFactory.getRtiFactory().createAttributeHandleSet();
+        attributes.add(idbulletHandle);
+        attributes.add(positionHandle);
+
+        rtiamb.publishObjectClass(bulletHandle, attributes);
+
+//        była interakcja
+//        int addProductHandle = rtiamb.getInteractionClassHandle( "InteractionRoot.AddBullet" );
+//        rtiamb.publishInteractionClass(addProductHandle);
     }
 
     private void updateHLAObject(double time) throws RTIexception{
@@ -168,22 +187,6 @@ public class BulletsFederate {
         rtiamb.sendInteraction( interactionHandle, parameters, "tag".getBytes(), time );
     }
 
-    private void publishAndSubscribe() throws RTIexception {
-        int bulletHandle = rtiamb.getObjectClassHandle("ObjectRoot.Bullet");
-        int idbulletHandle = rtiamb.getAttributeHandle( "idbullet", bulletHandle );
-        int positionHandle = rtiamb.getAttributeHandle( "position", bulletHandle );
-
-        AttributeHandleSet attributes = RtiFactoryFactory.getRtiFactory().createAttributeHandleSet();
-        attributes.add(idbulletHandle);
-        attributes.add(positionHandle);
-
-        rtiamb.publishObjectClass(bulletHandle, attributes);
-
-//        była interakcja
-//        int addProductHandle = rtiamb.getInteractionClassHandle( "InteractionRoot.AddBullet" );
-//        rtiamb.publishInteractionClass(addProductHandle);
-    }
-
     private void advanceTime( double timestep ) throws RTIexception
     {
         log("requesting time advance for: " + timestep);
@@ -208,26 +211,70 @@ public class BulletsFederate {
         return new DoubleTime( time );
     }
 
-    /**
-     * Same as for {@link #convertTime(double)}
-     */
     private LogicalTimeInterval convertInterval( double time )
     {
         // PORTICO SPECIFIC!!
         return new DoubleTimeInterval( time );
     }
 
+//////////////////////////////
+//Faktyczne metody symulacji//
+
+
+    private void run(String federateName, String federationName) throws Exception {
+        initializeFederate(federateName,federationName);
+        mainLoop();
+        finalizeFederate(federationName);
+    }
+
+    private void mainLoop() throws RTIexception, InterruptedException{
+        int krok = 0;
+        while (fedamb.running) {
+            double timeToAdvance = fedamb.federateTime + timeStep;
+            advanceTime(timeToAdvance);
+            if(shouldShoot){
+                registerBulletObject();
+                shouldShoot=false;
+            }
+            //TODO tu jakiś inny czas trzeba dać
+            updateHLAObject(timeToAdvance);
+            sleep(1000);
+            rtiamb.tick();
+            krok++;
+            if(krok%8==0){
+                //TODO zniszczyć poprzedni obiekt
+                //shouldShoot=true;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        String federateName = "Pociski";
+        try {
+            new BulletsFederate().run(federateName ,"Federacja");
+        } catch (Exception rtie) {
+            rtie.printStackTrace();
+        }
+    }
+
+//Pomocnicze//
     private void log( String message )
     {
         System.out.println( "BulletsFederate   : " + message );
     }
 
-    public static void main(String[] args) {
-        try {
-            new BulletsFederate().runFederate();
-        } catch (RTIexception | InterruptedException rtIexception) {
-            rtIexception.printStackTrace();
+    private void waitForUser()
+    {
+        log( " >>>>>>>>>> Press Enter to Continue <<<<<<<<<<" );
+        BufferedReader reader = new BufferedReader( new InputStreamReader(System.in) );
+        try
+        {
+            reader.readLine();
+        }
+        catch( Exception e )
+        {
+            log( "Error while waiting for user input: " + e.getMessage() );
+            e.printStackTrace();
         }
     }
-
 }
