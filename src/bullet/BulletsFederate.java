@@ -20,8 +20,13 @@ public class BulletsFederate {
     private RTIambassador rtiamb;
     private BulletsFederateAmbassador fedamb;
     private final double timeStep           = 10.0;
+    private int bulletHlaHandle;
+    private int reloadTime = 6000;
+    private boolean shouldShoot = true;
+    private int actualPosition = 0;
+    private int actualIdBullet = 1;
 
-    public void runFederate() throws RTIexception{
+    public void runFederate() throws RTIexception, InterruptedException {
         rtiamb = RtiFactoryFactory.getRtiFactory().createRtiAmbassador();
 
         try
@@ -66,17 +71,33 @@ public class BulletsFederate {
 
         publishAndSubscribe();
 
+        int krok = 0;
         while (fedamb.running) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            double timeToAdvance = fedamb.federateTime + timeStep;
+            advanceTime(timeToAdvance);
+            if(shouldShoot){
+                registerBulletObject();
+                shouldShoot=false;
             }
-            advanceTime(randomTime());
-            sendInteraction(fedamb.federateTime + fedamb.federateLookahead);
+            //TODO tu jakiś inny czas trzeba dać
+            updateHLAObject(timeToAdvance);
+            sleep(1000);
             rtiamb.tick();
+            krok++;
+            if(krok%8==0){
+                //TODO zniszczyć poprzedni obiekt
+                //shouldShoot=true;
+            }
         }
 
+    }
+
+    private void calculatePosition() {
+        actualPosition = actualPosition++;
+    }
+
+    private void sleep(int time) throws InterruptedException {
+        Thread.sleep(time);
     }
 
     private void waitForUser()
@@ -114,6 +135,24 @@ public class BulletsFederate {
         }
     }
 
+    private void updateHLAObject(double time) throws RTIexception{
+        SuppliedAttributes attributes = RtiFactoryFactory.getRtiFactory().createSuppliedAttributes();
+
+        int bulletHandle = rtiamb.getObjectClass(bulletHlaHandle);
+        int positionHandle = rtiamb.getAttributeHandle( "position", bulletHandle );
+        calculatePosition();
+        byte[] positionValue = EncodingHelpers.encodeInt(actualPosition);
+
+        attributes.add(positionHandle, positionValue);
+        LogicalTime logicalTime = convertTime( time );
+        rtiamb.updateAttributeValues(bulletHlaHandle, attributes, "actualize position".getBytes(), logicalTime );
+    }
+
+    private void registerBulletObject() throws RTIexception {
+        int classHandle = rtiamb.getObjectClassHandle("ObjectRoot.Bullet");
+        this.bulletHlaHandle = rtiamb.registerObjectInstance(classHandle);
+    }
+
     private void sendInteraction(double timeStep) throws RTIexception {
         SuppliedParameters parameters = RtiFactoryFactory.getRtiFactory().createSuppliedParameters();
         Random random = new Random();
@@ -130,8 +169,19 @@ public class BulletsFederate {
     }
 
     private void publishAndSubscribe() throws RTIexception {
-        int addProductHandle = rtiamb.getInteractionClassHandle( "InteractionRoot.AddBullet" );
-        rtiamb.publishInteractionClass(addProductHandle);
+        int bulletHandle = rtiamb.getObjectClassHandle("ObjectRoot.Bullet");
+        int idbulletHandle = rtiamb.getAttributeHandle( "idbullet", bulletHandle );
+        int positionHandle = rtiamb.getAttributeHandle( "position", bulletHandle );
+
+        AttributeHandleSet attributes = RtiFactoryFactory.getRtiFactory().createAttributeHandleSet();
+        attributes.add(idbulletHandle);
+        attributes.add(positionHandle);
+
+        rtiamb.publishObjectClass(bulletHandle, attributes);
+
+//        była interakcja
+//        int addProductHandle = rtiamb.getInteractionClassHandle( "InteractionRoot.AddBullet" );
+//        rtiamb.publishInteractionClass(addProductHandle);
     }
 
     private void advanceTime( double timestep ) throws RTIexception
@@ -175,7 +225,7 @@ public class BulletsFederate {
     public static void main(String[] args) {
         try {
             new BulletsFederate().runFederate();
-        } catch (RTIexception rtIexception) {
+        } catch (RTIexception | InterruptedException rtIexception) {
             rtIexception.printStackTrace();
         }
     }
