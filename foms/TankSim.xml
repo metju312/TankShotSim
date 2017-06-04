@@ -72,6 +72,45 @@
 					<semantics>Change in tarrain</semantics>
 				</attribute>
 			</objectClass>
+
+            <objectClass>
+				<name>Atmosphere</name>
+				<sharing>PublishSubscribe</sharing>
+				<semantics>Affects the missile's flight</semantics>
+				<attribute>
+					<name>WindDirectory</name>
+					<dataType>Vector3</dataType>
+					<updateType>Conditional</updateType>
+					<updateCondition>Customer request</updateCondition>
+					<ownership>NoTransfer</ownership>
+					<sharing>PublishSubscribe</sharing>
+					<transportation>HLAreliable</transportation>
+					<order>TimeStamp</order>
+					<semantics>Wind directory changes</semantics>
+				</attribute>
+                <attribute>
+                    <name>Temperature</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <updateType>Conditional</updateType>
+                    <updateCondition>Customer request</updateCondition>
+                    <ownership>NoTransfer</ownership>
+                    <sharing>PublishSubscribe</sharing>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                    <semantics>Temperature of environment</semantics>
+                </attribute>
+                <attribute>
+                    <name>Pressure</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <updateType>Conditional</updateType>
+                    <updateCondition>Customer request</updateCondition>
+                    <ownership>NoTransfer</ownership>
+                    <sharing>PublishSubscribe</sharing>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                    <semantics>Pressure of environment</semantics>
+                </attribute>
+			</objectClass>
 			
 			<objectClass>
 				<name>Target</name>
@@ -98,6 +137,34 @@
 					<transportation>HLAreliable</transportation>
 					<order>TimeStamp</order>
 					<semantics>position of a target</semantics>
+				</attribute>
+			</objectClass>
+
+			<objectClass>
+				<name>Bullet</name>
+				<sharing>PublishSubscribe</sharing>
+				<semantics>Fired from the tank</semantics>
+				<attribute>
+					<name>BulletID</name>
+					<dataType>HLAinteger32BE</dataType>
+					<updateType>Conditional</updateType>
+					<updateCondition>Customer request</updateCondition>
+					<ownership>NoTransfer</ownership>
+					<sharing>PublishSubscribe</sharing>
+					<transportation>HLAreliable</transportation>
+					<order>TimeStamp</order>
+					<semantics>Id of a bullet</semantics>
+				</attribute>
+				<attribute>
+					<name>Position</name>
+					<dataType>Vector3</dataType>
+					<updateType>Conditional</updateType>
+					<updateCondition>Customer request</updateCondition>
+					<ownership>NoTransfer</ownership>
+					<sharing>PublishSubscribe</sharing>
+					<transportation>HLAreliable</transportation>
+					<order>TimeStamp</order>
+					<semantics>position of a bullet</semantics>
 				</attribute>
 			</objectClass>
 			
