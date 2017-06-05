@@ -197,6 +197,20 @@
 					<semantics>Whether the food was served in a reasonable amount of time</semantics>
 				</parameter>
 			</interactionClass>
+			<interactionClass>
+				<name>Hit</name>
+				<sharing>PublishSubscribe</sharing>
+				<dimensions/>
+				<transportation>HLAreliable</transportation>
+				<order>TimeStamp</order>
+				<semantics>Waiter has served entree</semantics>
+				<parameter>
+					<name>TargetID</name>
+					<dataType>HLAinteger32BE</dataType>
+					<semantics>Whether the food was the correct temperature</semantics>
+				</parameter>
+
+			</interactionClass>
         </interactionClass>
     </interactions>
 	

@@ -1,11 +1,12 @@
 package bullet;
 
-import environment.EnvironmentFederate;
-import hla.rti.LogicalTime;
-import hla.rti1516e.NullFederateAmbassador;
-import org.portico.impl.hla13.types.DoubleTime;
+import Helpers.Vector3;
+import hla.rti1516e.*;
+import hla.rti1516e.time.HLAfloat64Time;
 
-public class BulletsFederateAmbassador extends hla.rti.jlc.NullFederateAmbassador {
+public class BulletsFederateAmbassador extends NullFederateAmbassador {
+
+    private BulletsFederate federate;
 
     protected double federateTime        = 0.0;
     protected double federateLookahead   = 1.0;
@@ -20,59 +21,63 @@ public class BulletsFederateAmbassador extends hla.rti.jlc.NullFederateAmbassado
     protected boolean running 			 = true;
 
 
-    private double convertTime( LogicalTime logicalTime )
+    public BulletsFederateAmbassador(BulletsFederate federate)
     {
-        // PORTICO SPECIFIC!!
-        return ((DoubleTime)logicalTime).getTime();
+        this.federate=federate;
     }
 
     private void log( String message )
     {
-        System.out.println( "BulletsFederateAmbassador: " + message );
+        System.out.println( "FederateAmbassador: " + message );
     }
 
-    public void synchronizationPointRegistrationFailed( String label )
+    @Override
+    public void synchronizationPointRegistrationFailed( String label,
+                                                        SynchronizationPointFailureReason reason )
     {
-        log( "Failed to register sync point: " + label );
+        log( "Failed to register sync point: " + label + ", reason="+reason );
     }
 
+    @Override
     public void synchronizationPointRegistrationSucceeded( String label )
     {
         log( "Successfully registered sync point: " + label );
     }
 
+    @Override
     public void announceSynchronizationPoint( String label, byte[] tag )
     {
         log( "Synchronization point announced: " + label );
-        if( label.equals(EnvironmentFederate.READY_TO_RUN) )
+        if( label.equals(BulletsFederate.READY_TO_RUN) )
             this.isAnnounced = true;
     }
 
-    public void federationSynchronized( String label )
+    @Override
+    public void federationSynchronized( String label, FederateHandleSet failed )
     {
         log( "Federation Synchronized: " + label );
-        if( label.equals(EnvironmentFederate.READY_TO_RUN) )
+        if( label.equals(BulletsFederate.READY_TO_RUN) )
             this.isReadyToRun = true;
     }
 
-    /**
-     * The RTI has informed us that time regulation is now enabled.
-     */
-    public void timeRegulationEnabled( LogicalTime theFederateTime )
+    @Override
+    public void timeRegulationEnabled( LogicalTime time )
     {
-        this.federateTime = convertTime( theFederateTime );
+        this.federateTime = ((HLAfloat64Time)time).getValue();
         this.isRegulating = true;
     }
 
-    public void timeConstrainedEnabled( LogicalTime theFederateTime )
+    @Override
+    public void timeConstrainedEnabled( LogicalTime time )
     {
-        this.federateTime = convertTime( theFederateTime );
+        this.federateTime = ((HLAfloat64Time)time).getValue();
         this.isConstrained = true;
     }
 
-    public void timeAdvanceGrant( LogicalTime theTime )
+    @Override
+    public void timeAdvanceGrant( LogicalTime time )
     {
-        this.federateTime = convertTime( theTime );
+        this.federateTime = ((HLAfloat64Time)time).getValue();
         this.isAdvancing = false;
     }
 

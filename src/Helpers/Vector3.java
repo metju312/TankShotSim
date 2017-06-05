@@ -25,4 +25,16 @@ public class Vector3
     {
         return new float[]{(float) x, (float) y, (float) z};
     }
+
+    public void addVector(Vector3 b)
+    {
+        x+=b.x;
+        y+=b.y;
+        z+=b.z;
+    }
+
+    public String toStirng()
+    {
+        return "Składowe: x = " + x + "; y = "+y+"; z = "+z;
+    }
 }

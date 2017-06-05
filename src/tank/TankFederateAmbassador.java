@@ -94,6 +94,11 @@ public class TankFederateAmbassador extends NullFederateAmbassador
         this.isAdvancing = false;
     }
 
+
+
+
+
+
     @Override
     public void discoverObjectInstance( ObjectInstanceHandle theObject,
                                         ObjectClassHandle theObjectClass,
@@ -181,75 +186,6 @@ public class TankFederateAmbassador extends NullFederateAmbassador
                 builder.append( " (Unknown)   " );
             }
 
-            builder.append( "\n" );
-        }
-
-        log( builder.toString() );
-    }
-
-    @Override
-    public void receiveInteraction( InteractionClassHandle interactionClass,
-                                    ParameterHandleValueMap theParameters,
-                                    byte[] tag,
-                                    OrderType sentOrdering,
-                                    TransportationTypeHandle theTransport,
-                                    SupplementalReceiveInfo receiveInfo )
-            throws FederateInternalError
-    {
-        // just pass it on to the other method for printing purposes
-        // passing null as the time will let the other method know it
-        // it from us, not from the RTI
-        this.receiveInteraction( interactionClass,
-                theParameters,
-                tag,
-                sentOrdering,
-                theTransport,
-                null,
-                sentOrdering,
-                receiveInfo );
-    }
-
-    @Override
-    public void receiveInteraction( InteractionClassHandle interactionClass,
-                                    ParameterHandleValueMap theParameters,
-                                    byte[] tag,
-                                    OrderType sentOrdering,
-                                    TransportationTypeHandle theTransport,
-                                    LogicalTime time,
-                                    OrderType receivedOrdering,
-                                    SupplementalReceiveInfo receiveInfo )
-            throws FederateInternalError
-    {
-        StringBuilder builder = new StringBuilder( "Interaction Received:" );
-
-        // print the handle
-        builder.append( " handle=" + interactionClass );
-        if( interactionClass.equals("federate.servedHandle - znowu odpowienni handle w federacie") )
-        {
-            builder.append( " (DrinkServed)" );
-        }
-
-        // print the tag
-        builder.append( ", tag=" + new String(tag) );
-        // print the time (if we have it) we'll get null if we are just receiving
-        // a forwarded call from the other reflect callback above
-        if( time != null )
-        {
-            builder.append( ", time=" + ((HLAfloat64Time)time).getValue() );
-        }
-
-        // print the parameer information
-        builder.append( ", parameterCount=" + theParameters.size() );
-        builder.append( "\n" );
-        for( ParameterHandle parameter : theParameters.keySet() )
-        {
-            // print the parameter handle
-            builder.append( "\tparamHandle=" );
-            builder.append( parameter );
-            // print the parameter value
-            builder.append( ", paramValue=" );
-            builder.append( theParameters.get(parameter).length );
-            builder.append( " bytes" );
             builder.append( "\n" );
         }
 

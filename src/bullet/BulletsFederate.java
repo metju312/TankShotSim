@@ -1,25 +1,23 @@
 package bullet;
 
 
-import hla.rti.*;
-import hla.rti.AttributeHandleSet;
-import hla.rti.FederatesCurrentlyJoined;
-import hla.rti.FederationExecutionAlreadyExists;
-import hla.rti.LogicalTime;
-import hla.rti.LogicalTimeInterval;
-import hla.rti.RTIambassador;
-import hla.rti.RTIexception;
-import hla.rti.jlc.EncodingHelpers;
-import hla.rti.jlc.RtiFactoryFactory;
+
+import Helpers.Vector3;
 import hla.rti1516e.*;
+import hla.rti1516e.encoding.EncoderFactory;
+import hla.rti1516e.encoding.HLAfixedArray;
+import hla.rti1516e.encoding.HLAfloat64BE;
+import hla.rti1516e.encoding.HLAinteger32BE;
 import hla.rti1516e.exceptions.*;
-import org.portico.impl.hla13.types.DoubleTime;
-import org.portico.impl.hla13.types.DoubleTimeInterval;
+import hla.rti1516e.time.HLAfloat64Interval;
+import hla.rti1516e.time.HLAfloat64Time;
+import hla.rti1516e.time.HLAfloat64TimeFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Random;
 
 public class BulletsFederate {
@@ -29,194 +27,192 @@ public class BulletsFederate {
     private RTIambassador rtiamb;
     private BulletsFederateAmbassador fedamb;
     private final double timeStep           = 10.0;
-    private int bulletHlaHandle;
-    private int reloadTime = 6000;
-    private boolean shouldShoot = true;
-    private int actualPosition = 0;
-    private int actualIdBullet = 1;
+    private HLAfloat64TimeFactory timeFactory; // set when we join
+    protected EncoderFactory encoderFactory;
+
+
+    private boolean bulletInTheAir = false;
+    private Vector3 bulletPosition;
+    private Vector3 bulletVelocity;
+    private int bulletId = 1;
+
+
+    protected ObjectClassHandle bulletHandle;
+    protected AttributeHandle bulletIdHandle;
+    protected AttributeHandle bulletPositionHandle;
+
+    protected ObjectClassHandle atmosphereHandle;
+    protected AttributeHandle windHandle;
+    protected AttributeHandle temperatureHandle;
+    protected AttributeHandle pressureHandle;
+
+    protected InteractionClassHandle shotHandle;
+    protected ParameterHandle shotPositionHandle;
+    protected ParameterHandle directionHandle;
+    protected ParameterHandle typeHandle;
+
+    protected InteractionClassHandle hitHandle;
+    protected ParameterHandle hitTargetIdHandle;
+
+    protected ObjectInstanceHandle bulletInstanceHandle;
+
 
 // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
         log("Tworzenie abasadorów i połączenia");
-        rtiamb = RtiFactoryFactory.getRtiFactory().createRtiAmbassador();
+        rtiamb = hla.rti1516e.RtiFactoryFactory.getRtiFactory().getRtiAmbassador();
+        encoderFactory = hla.rti1516e.RtiFactoryFactory.getRtiFactory().getEncoderFactory();
+        fedamb = new BulletsFederateAmbassador( this );
+        rtiamb.connect( fedamb, CallbackModel.HLA_EVOKED );
 
         log("Stworzenie i dołączenie do Federacj");
         try
         {
-            File fom = new File( "tankfed.fed" );
-            rtiamb.createFederationExecution( "ExampleFederation",
-                    fom.toURI().toURL() );
+            URL[] modules = new URL[]{
+                    (new File("foms/HLAstandardMIM.xml")).toURI().toURL(),
+                    (new File("foms/TankSim.xml")).toURI().toURL(),
+            };
+
+            rtiamb.createFederationExecution( federationName, modules );
             log( "Federacja została stworzona" );
         }
-        catch( FederationExecutionAlreadyExists exists )
+        catch( hla.rti1516e.exceptions.FederationExecutionAlreadyExists exists )
         {
             log( "Federacja już istnieje" );
         }
         catch( MalformedURLException urle )
         {
-            log( "Błąd podczas wczytywania modelii FOM: " + urle.getMessage() );
+            log( "Błąd podczas wyczytywania modelii FOM: " + urle.getMessage() );
             urle.printStackTrace();
             return;
         }
 
-        fedamb = new BulletsFederateAmbassador();
-        rtiamb.joinFederationExecution( "BulletsFederate", "ExampleFederation", fedamb );
-        log( "Dołaczono do federacji jako " + federateName);
+        URL[] joinModules = new URL[]{
+                (new File("foms/RestaurantSoup.xml")).toURI().toURL()
+        };//nie wiem od czego zależy czy dajemy dany moduł tutaj zamiast wcześniej
+
+        rtiamb.joinFederationExecution( federateName,            // name for the federate
+                "TankFederatType",   // federate type --- nie wiem po co gdzie i jak?
+                federationName,     // name of federation
+                joinModules );           // modules we want to add
+        this.timeFactory = (HLAfloat64TimeFactory)rtiamb.getTimeFactory();
+        log( "Dołaczono do federacji jako " + federateName );
 
         log("Synchronizacja");
+        // tworzymy punkt synchronizacji, nie jestem pewien czy
+        //wszyscy federaci muszą zgłosić się do tego punktu żeby zacząć
+        //czy wystarczy żeby ten jeden ogłosił że do niego doszedł
         rtiamb.registerFederationSynchronizationPoint( READY_TO_RUN, null );
-
+        // czekamy na to aż rti doda punkt
         while( fedamb.isAnnounced == false )
         {
-            rtiamb.tick();
+            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
         }
-
         waitForUser();
-
+        // zgłaszamy rti że doszliśmy do punktu i jesteśmy gotowi ruszyć, jeśli federat ma jakieś obliczenia które
+        // które wymagają dużo czasu to powinny być przed tym (na przykład generowanie mapy terenu)
         rtiamb.synchronizationPointAchieved( READY_TO_RUN );
-        log( "Osiągnięto punkt synchronizacji: " +READY_TO_RUN+ ", oczekiwanie na pozostałych federatów..." );
-
-
+        log( "Osiągnięto punkt synchronizacji:  " +READY_TO_RUN+ ", oczekiwanie na pozostałych federatów" );
         while( fedamb.isReadyToRun == false )
         {
-            rtiamb.tick();
+            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
         }
+
 
         log("Ustawienia rti");
         enableTimePolicy();
-
         publishAndSubscribe();
-
     }
 
 
-    private void finalizeFederate(String federationName) {
-//        rtiamb.resignFederationExecution( hla.rti1516e.ResignAction.DELETE_OBJECTS );
-//        log( "Resigned from Federation" );
-//        try
-//        {
-//            rtiamb.destroyFederationExecution( federationName );
-//            log( "Federacja została zniszczona" );
-//        }
-//        catch( hla.rti1516e.exceptions.FederationExecutionDoesNotExist dne )
-//        {
-//            log( "Federacja została już zniszczona" );
-//        }
-//        catch( hla.rti1516e.exceptions.FederatesCurrentlyJoined fcj )
-//        {
-//            log( "Fedaracja wciąż zaweira federatów" );
-//        }
+    private void finalizeFederate(String federationName) throws OwnershipAcquisitionPending, InvalidResignAction, FederateOwnsAttributes, RTIinternalError, FederateNotExecutionMember, CallNotAllowedFromWithinCallback, NotConnected {
+        rtiamb.resignFederationExecution( ResignAction.DELETE_OBJECTS );
+        log( "Resigned from Federation" );
+        try
+        {
+            rtiamb.destroyFederationExecution( federationName );
+            log( "Federacja została zniszczona" );
+        }
+        catch( FederationExecutionDoesNotExist dne )
+        {
+            log( "Federacja została już zniszczona" );
+        }
+        catch( FederatesCurrentlyJoined fcj )
+        {
+            log( "Fedaracja wciąż zaweira federatów" );
+        }
+
     }
 
 //Metody pomocnicze RTI
-
-    private void calculatePosition() {
-        actualPosition++;
-    }
-
-    private void sleep(int time) throws InterruptedException {
-        Thread.sleep(time);
-    }
-
     private void enableTimePolicy() throws RTIexception
     {
-        LogicalTime currentTime = convertTime( fedamb.federateTime );
-        LogicalTimeInterval lookahead = convertInterval( fedamb.federateLookahead );
-
-        this.rtiamb.enableTimeRegulation( currentTime, lookahead );
-
+        HLAfloat64Interval lookahead = timeFactory.makeInterval( fedamb.federateLookahead );
+        this.rtiamb.enableTimeRegulation( lookahead );
         while( fedamb.isRegulating == false )
         {
-            rtiamb.tick();
+            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
         }
-
         this.rtiamb.enableTimeConstrained();
-
         while( fedamb.isConstrained == false )
         {
-            rtiamb.tick();
+            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
         }
     }
 
-    private void publishAndSubscribe() throws RTIexception {
-        int bulletHandle = rtiamb.getObjectClassHandle("ObjectRoot.Bullet");
-        int idbulletHandle = rtiamb.getAttributeHandle( "idbullet", bulletHandle );
-        int positionHandle = rtiamb.getAttributeHandle( "position", bulletHandle );
+    private void publishAndSubscribe() throws RTIexception
+    {
+        this.bulletHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Bullet");
+        this.atmosphereHandle  = rtiamb.getObjectClassHandle("HLAobjectRoot.Atmosphere");
+        this.shotHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Shot");
+        this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
 
-        AttributeHandleSet attributes = RtiFactoryFactory.getRtiFactory().createAttributeHandleSet();
-        attributes.add(idbulletHandle);
-        attributes.add(positionHandle);
+        this.bulletIdHandle = rtiamb.getAttributeHandle(bulletHandle,"BulletID");
+        this.bulletPositionHandle = rtiamb.getAttributeHandle(bulletHandle,"Position");
+        this.windHandle = rtiamb.getAttributeHandle(atmosphereHandle, "WindDirectory");
+        this.temperatureHandle = rtiamb.getAttributeHandle(atmosphereHandle, "Temperature");
+        this.pressureHandle = rtiamb.getAttributeHandle(atmosphereHandle, "Pressure");
+        this.shotPositionHandle = rtiamb.getParameterHandle(shotHandle,"Position");
+        this.directionHandle = rtiamb.getParameterHandle(shotHandle,"Direction");
+        this.typeHandle = rtiamb.getParameterHandle(shotHandle,"Type");
+        this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
 
-        rtiamb.publishObjectClass(bulletHandle, attributes);
+        AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
+        attributes.add(bulletIdHandle);
+        attributes.add(bulletPositionHandle);
+        rtiamb.publishObjectClassAttributes(bulletHandle,attributes);
 
-//        była interakcja
-//        int addProductHandle = rtiamb.getInteractionClassHandle( "InteractionRoot.AddBullet" );
-//        rtiamb.publishInteractionClass(addProductHandle);
-    }
+        attributes = rtiamb.getAttributeHandleSetFactory().create();
+        attributes.add(windHandle);
+        attributes.add(temperatureHandle);
+        attributes.add(pressureHandle);
+        rtiamb.subscribeObjectClassAttributes(atmosphereHandle,attributes);
 
-    private void updateHLAObject(double time) throws RTIexception{
-        SuppliedAttributes attributes = RtiFactoryFactory.getRtiFactory().createSuppliedAttributes();
-
-        int bulletHandle = rtiamb.getObjectClass(bulletHlaHandle);
-        int positionHandle = rtiamb.getAttributeHandle( "position", bulletHandle );
-        calculatePosition();
-        byte[] positionValue = EncodingHelpers.encodeInt(actualPosition);
-
-        attributes.add(positionHandle, positionValue);
-        LogicalTime logicalTime = convertTime( time );
-
-        log("PociskId: " + actualIdBullet + " , pozycja: " + actualPosition);
-        rtiamb.updateAttributeValues(bulletHlaHandle, attributes, "actualize position".getBytes(), logicalTime );
-    }
-
-    private void registerBulletObject() throws RTIexception {
-        int classHandle = rtiamb.getObjectClassHandle("ObjectRoot.Bullet");
-        this.bulletHlaHandle = rtiamb.registerObjectInstance(classHandle);
-    }
-
-    private void sendInteraction(double timeStep) throws RTIexception {
-        SuppliedParameters parameters = RtiFactoryFactory.getRtiFactory().createSuppliedParameters();
-        Random random = new Random();
-        //byte[] quantity = EncodingHelpers.encodeInt(random.nextInt(10) + 1);
-        byte[] quantity = EncodingHelpers.encodeInt(6);
-
-        int interactionHandle = rtiamb.getInteractionClassHandle("InteractionRoot.AddBullet");
-        int speedHandle = rtiamb.getParameterHandle( "speed", interactionHandle );
-
-        parameters.add(speedHandle, quantity);
-
-        LogicalTime time = convertTime( timeStep );
-        rtiamb.sendInteraction( interactionHandle, parameters, "tag".getBytes(), time );
+        rtiamb.subscribeInteractionClass(shotHandle);
+        rtiamb.subscribeInteractionClass(hitHandle);
     }
 
     private void advanceTime( double timestep ) throws RTIexception
     {
-        log("requesting time advance for: " + timestep);
-        // request the advance
         fedamb.isAdvancing = true;
-        LogicalTime newTime = convertTime( fedamb.federateTime + timestep );
-        rtiamb.timeAdvanceRequest( newTime );
-        while( fedamb.isAdvancing )
-        {
-            rtiamb.tick();
-        }
+        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime + timestep );
+        rtiamb.timeAdvanceRequest( time );
+        while( fedamb.isAdvancing )rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
     }
 
-    private double randomTime() {
-        Random r = new Random();
-        return 1 +(9 * r.nextDouble());
-    }
-
-    private LogicalTime convertTime( double time )
+    private byte[] generateTag()
     {
-        // PORTICO SPECIFIC!!
-        return new DoubleTime( time );
+        return ("(timestamp) "+System.currentTimeMillis()).getBytes();
     }
 
-    private LogicalTimeInterval convertInterval( double time )
+    private HLAfloat64BE[] wrapFloatData( float... data )
     {
-        // PORTICO SPECIFIC!!
-        return new DoubleTimeInterval( time );
+        int length = data.length;
+        HLAfloat64BE[] array = new HLAfloat64BE[length];
+        for( int i = 0 ; i < length ; ++i )
+            array[i] = this.encoderFactory.createHLAfloat64BE( data[i] );
+
+        return array;
     }
 
 //////////////////////////////
@@ -231,24 +227,69 @@ public class BulletsFederate {
 
     private void mainLoop() throws RTIexception, InterruptedException{
         int krok = 0;
-        while (fedamb.running) {
-            double timeToAdvance = fedamb.federateTime + timeStep;
-            advanceTime( 1.0 );
-            //advanceTime(timeToAdvance);
-            if(shouldShoot){
-                registerBulletObject();
-                shouldShoot=false;
+        Random generator = new Random();
+        while (fedamb.running)
+        {
+            if(generator.nextDouble()<0.19)shotBullet(new Vector3(0.0,0.0,0.0),new Vector3(0.5,0.5,0.1),101);
+            if(bulletInTheAir)
+            {
+                moveBullet();
             }
-            //TODO tu jakiś inny czas trzeba dać
-            updateHLAObject(timeToAdvance);
-            sleep(1000);
-            rtiamb.tick();
             krok++;
-            if(krok%8==0){
-                //TODO zniszczyć poprzedni obiekt
-                //shouldShoot=true;
+            if(krok>10)
+            {
+                krok=0;
+                destroyBullet();}
+            advanceTime( 1.0 );
+            log( "Time Advanced to " + fedamb.federateTime );
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
+    }
+
+    private void registerBulletObject() throws SaveInProgress, RestoreInProgress, ObjectClassNotPublished, ObjectClassNotDefined, FederateNotExecutionMember, RTIinternalError, NotConnected, ObjectInstanceNotKnown, AttributeNotDefined, AttributeNotOwned {
+        bulletInstanceHandle= rtiamb.registerObjectInstance(bulletHandle);
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(1);
+        HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(bulletId);
+        attributes.put(bulletIdHandle,idValue.toByteArray());
+        rtiamb.updateAttributeValues(bulletInstanceHandle,attributes,generateTag());
+        log( "Dodano obiekt pocisk, handle=" + bulletInstanceHandle );
+    }
+
+    public void shotBullet(Vector3 pos, Vector3 dir, int type) throws RestoreInProgress, ObjectClassNotDefined, ObjectClassNotPublished, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected, ObjectInstanceNotKnown, AttributeNotDefined, AttributeNotOwned {
+        if(!bulletInTheAir)
+        {
+            registerBulletObject();
+            bulletInTheAir = true;
+            bulletPosition=pos;
+            bulletVelocity = dir;
+            log("Wystrzelono pocisk");
+        }
+    }
+
+    private void updateBulletPosition() throws NotConnected, FederateNotExecutionMember, ObjectInstanceNotKnown, RestoreInProgress, AttributeNotOwned, AttributeNotDefined, SaveInProgress, RTIinternalError {
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(1);
+        HLAfixedArray<HLAfloat64BE> bulletPositionValue = encoderFactory.createHLAfixedArray(wrapFloatData(bulletPosition.toFloatArray()));
+        attributes.put(bulletPositionHandle,bulletPositionValue.toByteArray());
+        rtiamb.updateAttributeValues(bulletInstanceHandle,attributes,generateTag());
+        log( "Zaktualizowano pozycje obiektu pocisku, handle=" + bulletInstanceHandle );
+    }
+
+    private void moveBullet() throws ObjectInstanceNotKnown, RestoreInProgress, AttributeNotOwned, AttributeNotDefined, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
+        bulletPosition.addVector(bulletVelocity);
+        updateBulletPosition();
+        log("pocisk poruszył sie na pozycje "+ bulletPosition.toStirng());
+    }
+
+    private void destroyBullet() throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
+        rtiamb.deleteObjectInstance( bulletInstanceHandle, generateTag() );
+
+        bulletInTheAir=false;
+        bulletId++;
+        log("pocisk zakończył swój lot");
     }
 
     public static void main(String[] args) {
@@ -279,5 +320,11 @@ public class BulletsFederate {
             log( "Error while waiting for user input: " + e.getMessage() );
             e.printStackTrace();
         }
+    }
+
+
+
+    private void sleep(int time) throws InterruptedException {
+        Thread.sleep(time);
     }
 }
