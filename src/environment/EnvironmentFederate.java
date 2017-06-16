@@ -1,10 +1,32 @@
 package environment;
 
 
-import bullet.Bullet;
+import Helpers.Vector3;
+import hla.rti1516e.ObjectInstanceHandle;
 import hla.rti1516e.*;
+import hla.rti1516e.AttributeHandle;
+import hla.rti1516e.AttributeHandleSet;
+import hla.rti1516e.InteractionClassHandle;
+import hla.rti1516e.ObjectClassHandle;
+import hla.rti1516e.ParameterHandle;
+import hla.rti1516e.RTIambassador;
+import hla.rti1516e.ResignAction;
 import hla.rti1516e.encoding.EncoderFactory;
+import hla.rti1516e.encoding.HLAfixedArray;
+import hla.rti1516e.encoding.HLAfloat64BE;
 import hla.rti1516e.exceptions.*;
+import hla.rti1516e.exceptions.FederateNotExecutionMember;
+import hla.rti1516e.exceptions.FederateOwnsAttributes;
+import hla.rti1516e.exceptions.FederatesCurrentlyJoined;
+import hla.rti1516e.exceptions.FederationExecutionAlreadyExists;
+import hla.rti1516e.exceptions.FederationExecutionDoesNotExist;
+import hla.rti1516e.exceptions.ObjectClassNotDefined;
+import hla.rti1516e.exceptions.ObjectClassNotPublished;
+import hla.rti1516e.exceptions.OwnershipAcquisitionPending;
+import hla.rti1516e.exceptions.RTIexception;
+import hla.rti1516e.exceptions.RTIinternalError;
+import hla.rti1516e.exceptions.RestoreInProgress;
+import hla.rti1516e.exceptions.SaveInProgress;
 import hla.rti1516e.time.HLAfloat64Interval;
 import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
@@ -14,6 +36,7 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Random;
 
 public class EnvironmentFederate {
 
@@ -24,7 +47,7 @@ public class EnvironmentFederate {
     private HLAfloat64TimeFactory timeFactory; // set when we join
     protected EncoderFactory encoderFactory;
 
-    protected Bullet bullet;
+
 
     protected ObjectClassHandle atmosphereHandle;
     protected AttributeHandle windDirectoryHandle;
@@ -42,7 +65,34 @@ public class EnvironmentFederate {
     protected ParameterHandle hitTargetIdHandle;
     protected ParameterHandle hitDirectionHandle;
 
-// Metody RTI
+    private boolean bulletInTheAir = false;
+    private boolean bulletCollided = false;
+    private Vector3 bulletPosition;
+    private Vector3 bulletVelocity;
+    private int bulletId = 1;
+
+    protected hla.rti1516e.ObjectInstanceHandle atmosphereInstance;
+
+    //TODO:Jak zrealizować przechowywanie hanlderów na instancje?
+    public class Shape
+    {
+        public double z;
+        public ObjectInstanceHandle rtiInstance;
+
+        public Shape(double z)
+        {
+            this.z=z;
+        }
+    }
+
+    private Shape[][] terrain;
+    //private double[][] terrain;
+
+    private Vector3 wind;
+    private double temperature;
+    private double pressure;
+
+    // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
         log("Tworzenie abasadorów i połączenia");
         rtiamb = RtiFactoryFactory.getRtiFactory().getRtiAmbassador();
@@ -107,11 +157,7 @@ public class EnvironmentFederate {
         enableTimePolicy();
 
         publishAndSubscribe();
-
-        //registerAtmosphereObject();
-        registerTerrainObject();
     }
-
 
     private void finalizeFederate(String federationName) throws OwnershipAcquisitionPending, InvalidResignAction, FederateOwnsAttributes, RTIinternalError, FederateNotExecutionMember, CallNotAllowedFromWithinCallback, NotConnected {
         rtiamb.resignFederationExecution( ResignAction.DELETE_OBJECTS );
@@ -146,25 +192,6 @@ public class EnvironmentFederate {
         {
             rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
         }
-    }
-
-    private void registerTerrainObject() throws RTIexception {
-        //TODO
-//        int classHandle = rtiamb.getObjectClassHandle("ObjectRoot.Environment");
-//        this.environmentHlaHandle = rtiamb.registerObjectInstance(classHandle);
-    }
-
-    private void updateHLAObject(double time) throws RTIexception{
-        //TODO
-//        SuppliedAttributes attributes = RtiFactoryFactory.getRtiFactory().createSuppliedAttributes();
-//
-//        int classHandle = rtiamb.getObjectClass(environmentHlaHandle);
-//        int stockHandle = rtiamb.getAttributeHandle( "stock", classHandle );
-//        byte[] stockValue = EncodingHelpers.encodeInt(stock);
-//
-//        attributes.add(stockHandle, stockValue);
-//        LogicalTime logicalTime = convertTime( time );
-//        rtiamb.updateAttributeValues(environmentHlaHandle, attributes, "actualize stock".getBytes(), logicalTime );
     }
 
     private void publishAndSubscribe() throws RTIexception
@@ -219,6 +246,21 @@ public class EnvironmentFederate {
         }
     }
 
+    private byte[] generateTag()
+    {
+        return ("(timestamp) "+System.currentTimeMillis()).getBytes();
+    }
+
+    private HLAfloat64BE[] wrapFloatData(float... data )
+    {
+        int length = data.length;
+        HLAfloat64BE[] array = new HLAfloat64BE[length];
+        for( int i = 0 ; i < length ; ++i )
+            array[i] = this.encoderFactory.createHLAfloat64BE( data[i] );
+
+        return array;
+    }
+
 //////////////////////////////
 //Faktyczne metody symulacji//
 
@@ -228,8 +270,12 @@ public class EnvironmentFederate {
         finalizeFederate(federationName);
     }
 
-    private void mainLoop() throws RTIexception {
-        while (fedamb.running) {
+    private void mainLoop() throws RTIexception
+    {
+        setUpEnvironment();
+        while (fedamb.running)
+        {
+            forecast();
 
             advanceTime( 1.0 );
             log( "Time Advanced to " + fedamb.federateTime );
@@ -241,7 +287,16 @@ public class EnvironmentFederate {
         }
     }
 
-    public static void main(String[] args) {
+    private void setUpEnvironment() throws RTIexception {
+        temperature= 25.9;
+        wind = new Vector3(0.5,0.05,0.01);
+        pressure = 1020.0;
+        generateTerrain();
+        registerAtmosphereObject();
+    }
+
+    public static void main(String[] args)
+    {
         String federateName = "Otoczenie";
         try {
             new EnvironmentFederate().run(federateName, "Federacja");
@@ -249,6 +304,94 @@ public class EnvironmentFederate {
             rtie.printStackTrace();
         }
     }
+
+
+
+    private void generateTerrain() throws RTIexception
+    {
+        int x=50;
+        int y=50;
+        //Tymczasowy, przykładowy teren
+        terrain=new Shape[x][y];
+        terrain[4][32] = new Shape( 2.4);
+        terrain[5][32] = new Shape( 3.5);
+        terrain[4][31] = new Shape(  2.0);
+        terrain[5][31] = new Shape(  2.9);
+        //TODO: Faktyczny generator terenu
+
+        for(int i=0;i<x;i++)
+            for(int j=0;j<y;j++)
+                if(terrain[i][j]!=null)registerTerrainObject(i,j,terrain[i][j]);
+    }
+
+    private void forecast() throws RTIexception
+    {
+        //TODO: faktyczna generacja pogody
+        Random generator = new Random();
+        temperature+=generator.nextDouble()-0.5;
+        pressure+=generator.nextDouble()*5-2.5;
+        wind.addVector(new Vector3(generator.nextDouble()-0.5,generator.nextDouble()-0.5,generator.nextDouble()-0.5));
+        updateAtmosphereObject();
+    }
+
+    private void registerAtmosphereObject() throws SaveInProgress, RestoreInProgress, ObjectClassNotPublished, ObjectClassNotDefined, FederateNotExecutionMember, RTIinternalError, NotConnected, AttributeNotDefined, ObjectInstanceNotKnown, AttributeNotOwned, InvalidLogicalTime
+    {
+        atmosphereInstance = rtiamb.registerObjectInstance(atmosphereHandle);
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(3);
+        HLAfixedArray<HLAfloat64BE> windValue = encoderFactory.createHLAfixedArray(wrapFloatData(wind.toFloatArray()));
+        HLAfloat64BE pressureValue = encoderFactory.createHLAfloat64BE(pressure);
+        HLAfloat64BE temperatureValue = encoderFactory.createHLAfloat64BE(temperature);
+        attributes.put(windDirectoryHandle,windValue.toByteArray());
+        attributes.put(pressureHandle,pressureValue.toByteArray());
+        attributes.put(temperatureHandle,temperatureValue.toByteArray());
+        rtiamb.updateAttributeValues(atmosphereInstance,
+                attributes,
+                generateTag(),
+                timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
+        log( "Dodano obiekt atmosfery, handle=" + atmosphereInstance);
+    }
+
+    private void updateAtmosphereObject() throws RTIexception
+    {
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(3);
+        HLAfixedArray<HLAfloat64BE> windValue = encoderFactory.createHLAfixedArray(wrapFloatData(wind.toFloatArray()));
+        HLAfloat64BE pressureValue = encoderFactory.createHLAfloat64BE(pressure);
+        HLAfloat64BE temperatureValue = encoderFactory.createHLAfloat64BE(temperature);
+        attributes.put(windDirectoryHandle,windValue.toByteArray());
+        attributes.put(pressureHandle,pressureValue.toByteArray());
+        attributes.put(pressureHandle,pressureValue.toByteArray());
+        rtiamb.updateAttributeValues(atmosphereInstance,
+                attributes,
+                generateTag(),
+                timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
+        log( "Zmieniono atrybuty atmosfery, handle=" + atmosphereInstance);
+    }
+
+    private void registerTerrainObject(double x, double y, Shape z) throws RTIexception
+    {
+        z.rtiInstance = rtiamb.registerObjectInstance(terrainHandle);
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(1);
+        HLAfixedArray<HLAfloat64BE> shape = encoderFactory.createHLAfixedArray(wrapFloatData(new Vector3(x,y,z.z).toFloatArray()));
+        attributes.put(shapeHandle,shape.toByteArray());
+        rtiamb.updateAttributeValues(z.rtiInstance,
+                attributes,
+                generateTag(),
+                timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
+        log( "Dodano obiekt terenu na pozycji ("+x +","+y+"), handle=" + atmosphereInstance);
+    }
+
+    private void updateTerrainObject(double x, double y, Shape z) throws RTIexception
+    {
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(1);
+        HLAfixedArray<HLAfloat64BE> shape = encoderFactory.createHLAfixedArray(wrapFloatData(new Vector3(x,y,z.z).toFloatArray()));
+        attributes.put(shapeHandle,shape.toByteArray());
+        rtiamb.updateAttributeValues(z.rtiInstance,
+                attributes,
+                generateTag(),
+                timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
+        log( "Zaktualizowano obiekt terenu na pozycji ("+x +","+y+"), handle=" + atmosphereInstance);
+    }
+
 
 //Pomocnicze//
     private void log( String message )

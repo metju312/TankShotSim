@@ -224,7 +224,7 @@ public class TargetsFederate {
 
             for (Target target:targets)
             {
-                if(!target.isRegistered)registerTargetObject(target);
+
                 moveTarget(target);
             }
 
@@ -259,6 +259,7 @@ public class TargetsFederate {
             case 5:
                 Target target = new Target(++maxTargetId,new Vector3(0.0,0.0,0.0));
                 targets.add(target);
+                registerTargetObject(target);
                 log("Stworzono cel o id: "+maxTargetId);
                 break;
         }
@@ -271,7 +272,10 @@ public class TargetsFederate {
         HLAfixedArray<HLAfloat64BE> positionValue = encoderFactory.createHLAfixedArray(wrapFloatData(targetObject.getPosition().toFloatArray()));
         attributes.put(targetIdHandle,idValue.toByteArray());
         attributes.put(targetPositionHandle,positionValue.toByteArray());
-        rtiamb.updateAttributeValues(targetObject.getRtiInstance(),attributes,generateTag(),timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
+        rtiamb.updateAttributeValues(targetObject.getRtiInstance(),
+                attributes,
+                generateTag(),
+                timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
         targetObject.isRegistered=true;
         log( "Dodano obiekt celu, handle=" + targetObject.getRtiInstance());
     }
