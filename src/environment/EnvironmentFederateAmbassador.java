@@ -38,8 +38,7 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
 
     protected boolean running 			 = true;
     protected int finishHandle           = 0;
-    protected int addBulletHandle = 0;
-    protected int getBulletHandle = 0;
+    protected int bulletHandle = 0;
 
     protected ArrayList<ExternalEvent> externalEvents = new ArrayList<>();
 
@@ -110,6 +109,7 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
         //tutaj powinno być dodanie nowego obiektu który się obserwuje, typu
         log( "Discoverd Object: handle=" + theObject + ", classHandle=" +
                 theObjectClass + ", name=" + objectName );
+
     }
 
     @Override
