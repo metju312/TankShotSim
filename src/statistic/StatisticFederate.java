@@ -38,12 +38,17 @@ public class StatisticFederate {
     protected int missCount = 0;
 
     protected InteractionClassHandle shotHandle;
+    protected ParameterHandle shotPositionHandle;
+    protected ParameterHandle directionHandle;
+    protected ParameterHandle typeHandle;
 
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
+    protected ParameterHandle hitDirectionHandle;
 
     protected ObjectClassHandle targetHandle;
     protected AttributeHandle targetIdHandle;
+    protected AttributeHandle targetPositionHandle;
 
     // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
@@ -150,19 +155,27 @@ public class StatisticFederate {
 
     private void publishAndSubscribe() throws RTIexception
     {
+        //Subskrycja na Wystrzał
         this.shotHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Shot");
+        this.shotPositionHandle = rtiamb.getParameterHandle(shotHandle,"Position");
+        this.directionHandle = rtiamb.getParameterHandle(shotHandle,"Direction");
+        this.typeHandle = rtiamb.getParameterHandle(shotHandle,"Type");
+        rtiamb.subscribeInteractionClass(shotHandle);
+
+        //Subskrycja na Trafienie
         this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
-        this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
-
         this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
-        this.targetIdHandle = rtiamb.getAttributeHandle(targetHandle,"TargetID");
+        this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
+        rtiamb.subscribeInteractionClass(hitHandle);
 
+        //Subskrybcja na Cel
+        this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
+        this.targetIdHandle = rtiamb.getAttributeHandle(targetHandle,"TargetID");
+        this.targetPositionHandle = rtiamb.getAttributeHandle(targetHandle,"Position");
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(targetIdHandle);
-        rtiamb.subscribeObjectClassAttributes(targetHandle,attributes);
-
-        rtiamb.subscribeInteractionClass(shotHandle);
-        rtiamb.subscribeInteractionClass(hitHandle);
+        attributes.add(targetPositionHandle);
+        rtiamb.subscribeObjectClassAttributes(targetHandle, attributes);
     }
 
     private void advanceTime( double timestep ) throws RTIexception

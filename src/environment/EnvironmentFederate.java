@@ -38,6 +38,10 @@ public class EnvironmentFederate {
     protected AttributeHandle bulletIdHandle;
     protected AttributeHandle bulletPositionHandle;
 
+    protected InteractionClassHandle hitHandle;
+    protected ParameterHandle hitTargetIdHandle;
+    protected ParameterHandle hitDirectionHandle;
+
 // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
         log("Tworzenie abasadorów i połączenia");
@@ -163,39 +167,40 @@ public class EnvironmentFederate {
 //        rtiamb.updateAttributeValues(environmentHlaHandle, attributes, "actualize stock".getBytes(), logicalTime );
     }
 
-    private void publishAndSubscribe() throws RTIexception {
-        this.atmosphereHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Atmosphere");
-        this.windDirectoryHandle = rtiamb.getAttributeHandle(atmosphereHandle,"WindDirectory");
-        this.temperatureHandle = rtiamb.getAttributeHandle(atmosphereHandle,"Temperature");
-        this.pressureHandle = rtiamb.getAttributeHandle(atmosphereHandle,"Pressure");
-
-        this.terrainHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Terrain");
-        this.shapeHandle = rtiamb.getAttributeHandle(terrainHandle,"Shape");
-
+    private void publishAndSubscribe() throws RTIexception
+    {
+        // Subskrypcja na Pocisk
         this.bulletHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Bullet");
         this.bulletIdHandle = rtiamb.getAttributeHandle(bulletHandle,"BulletID");
         this.bulletPositionHandle = rtiamb.getAttributeHandle(bulletHandle,"Position");
-
-        // Subskrypcja na Pocisk
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(bulletIdHandle);
         attributes.add(bulletPositionHandle);
         rtiamb.subscribeObjectClassAttributes(bulletHandle, attributes);
 
-        // Publikacja na Teren
-        attributes = rtiamb.getAttributeHandleSetFactory().create();
-        attributes.add(shapeHandle);
-        rtiamb.publishObjectClassAttributes(terrainHandle, attributes);
-
-        // Publikacja na Atmosfere
+        // Publikacja Atmosfery
+        this.atmosphereHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Atmosphere");
+        this.windDirectoryHandle = rtiamb.getAttributeHandle(atmosphereHandle,"WindDirectory");
+        this.temperatureHandle = rtiamb.getAttributeHandle(atmosphereHandle,"Temperature");
+        this.pressureHandle = rtiamb.getAttributeHandle(atmosphereHandle,"Pressure");
         attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(windDirectoryHandle);
         attributes.add(temperatureHandle);
         attributes.add(pressureHandle);
         rtiamb.publishObjectClassAttributes(atmosphereHandle, attributes);
 
-        //TODO Publikacja na trafienie
-        //rtiamb.publishInteractionClass(trafienie);
+        // Publikacja na Teren
+        this.terrainHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Terrain");
+        this.shapeHandle = rtiamb.getAttributeHandle(terrainHandle,"Shape");
+        attributes = rtiamb.getAttributeHandleSetFactory().create();
+        attributes.add(shapeHandle);
+        rtiamb.publishObjectClassAttributes(terrainHandle, attributes);
+
+        // Publikacja na Trafienie
+        this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
+        this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
+        this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
+        rtiamb.publishInteractionClass(hitHandle);
 
     }
 

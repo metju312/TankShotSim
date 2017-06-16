@@ -40,10 +40,14 @@ public class TargetsFederate {
 
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
+    protected ParameterHandle hitDirectionHandle;
 
     protected ObjectClassHandle targetHandle;
     protected AttributeHandle targetIdHandle;
     protected AttributeHandle targetPositionHandle;
+
+    protected ObjectClassHandle terrainHandle;
+    protected AttributeHandle shapeHandle;
 
     // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
@@ -150,21 +154,29 @@ public class TargetsFederate {
 
     private void publishAndSubscribe() throws RTIexception
     {
+        //Subskrybcja na Trafienie
         this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
-        this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
-
         this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
+        this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
+        rtiamb.subscribeInteractionClass(hitHandle);
 
+        //Publikacja Celu
+        this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
         this.targetIdHandle = rtiamb.getAttributeHandle(targetHandle,"TargetID");
         this.targetPositionHandle = rtiamb.getAttributeHandle(targetHandle,"Position");
-
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(targetIdHandle);
         attributes.add(targetPositionHandle);
-
         rtiamb.publishObjectClassAttributes(targetHandle,attributes);
 
-        rtiamb.subscribeInteractionClass(hitHandle);
+        //Subskrybcja na Teren
+        this.terrainHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Terrain");
+        this.shapeHandle = rtiamb.getAttributeHandle(terrainHandle,"Shape");
+        attributes = rtiamb.getAttributeHandleSetFactory().create();
+        attributes.add(shapeHandle);
+        rtiamb.subscribeObjectClassAttributes(terrainHandle,attributes);
+
+
     }
 
     private void advanceTime( double timestep ) throws RTIexception

@@ -54,6 +54,7 @@ public class BulletsFederate {
 
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
+    protected ParameterHandle hitDirectionHandle;
 
     protected ObjectInstanceHandle bulletInstanceHandle;
 
@@ -163,33 +164,37 @@ public class BulletsFederate {
 
     private void publishAndSubscribe() throws RTIexception
     {
+        //Publikacja Pocisku
         this.bulletHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Bullet");
-        this.atmosphereHandle  = rtiamb.getObjectClassHandle("HLAobjectRoot.Atmosphere");
-        this.shotHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Shot");
-        this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
-
         this.bulletIdHandle = rtiamb.getAttributeHandle(bulletHandle,"BulletID");
         this.bulletPositionHandle = rtiamb.getAttributeHandle(bulletHandle,"Position");
-        this.windHandle = rtiamb.getAttributeHandle(atmosphereHandle, "WindDirectory");
-        this.temperatureHandle = rtiamb.getAttributeHandle(atmosphereHandle, "Temperature");
-        this.pressureHandle = rtiamb.getAttributeHandle(atmosphereHandle, "Pressure");
-        this.shotPositionHandle = rtiamb.getParameterHandle(shotHandle,"Position");
-        this.directionHandle = rtiamb.getParameterHandle(shotHandle,"Direction");
-        this.typeHandle = rtiamb.getParameterHandle(shotHandle,"Type");
-        this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
-
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(bulletIdHandle);
         attributes.add(bulletPositionHandle);
         rtiamb.publishObjectClassAttributes(bulletHandle,attributes);
 
+        //Subskrycja na Atmosferę
+        this.atmosphereHandle  = rtiamb.getObjectClassHandle("HLAobjectRoot.Atmosphere");
+        this.windHandle = rtiamb.getAttributeHandle(atmosphereHandle, "WindDirectory");
+        this.temperatureHandle = rtiamb.getAttributeHandle(atmosphereHandle, "Temperature");
+        this.pressureHandle = rtiamb.getAttributeHandle(atmosphereHandle, "Pressure");
         attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(windHandle);
         attributes.add(temperatureHandle);
         attributes.add(pressureHandle);
         rtiamb.subscribeObjectClassAttributes(atmosphereHandle,attributes);
 
+        //Subskrycja na Wystrzał
+        this.shotHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Shot");
+        this.shotPositionHandle = rtiamb.getParameterHandle(shotHandle,"Position");
+        this.directionHandle = rtiamb.getParameterHandle(shotHandle,"Direction");
+        this.typeHandle = rtiamb.getParameterHandle(shotHandle,"Type");
         rtiamb.subscribeInteractionClass(shotHandle);
+
+        //Subskrycja na Trafienie
+        this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
+        this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
+        this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
         rtiamb.subscribeInteractionClass(hitHandle);
     }
 

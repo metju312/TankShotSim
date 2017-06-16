@@ -153,26 +153,27 @@ public class TankFederate
 
     private void publishAndSubscribe() throws RTIexception
     {
+        //Subskrybcja na Teren
         this.terrainHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Terrain");
-        this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
-        this.shotHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Shot");
-
         this.shapeHandle = rtiamb.getAttributeHandle(terrainHandle,"Shape");
-        this.targetIdHandle = rtiamb.getAttributeHandle(targetHandle,"TargetID");
-        this.targetPositionHandle = rtiamb.getAttributeHandle(targetHandle,"Position");
-        this.shotPositionHandle = rtiamb.getParameterHandle(shotHandle,"Position");
-        this.directionHandle = rtiamb.getParameterHandle(shotHandle,"Direction");
-        this.typeHandle = rtiamb.getParameterHandle(shotHandle,"Type");
-
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(shapeHandle);
         rtiamb.subscribeObjectClassAttributes(terrainHandle, attributes);
 
+        //Subskrybcja na Cel
+        this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
+        this.targetIdHandle = rtiamb.getAttributeHandle(targetHandle,"TargetID");
+        this.targetPositionHandle = rtiamb.getAttributeHandle(targetHandle,"Position");
         attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(targetIdHandle);
         attributes.add(targetPositionHandle);
         rtiamb.subscribeObjectClassAttributes(targetHandle, attributes);
 
+        //Publikacja Wystrzału
+        this.shotHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Shot");
+        this.shotPositionHandle = rtiamb.getParameterHandle(shotHandle,"Position");
+        this.directionHandle = rtiamb.getParameterHandle(shotHandle,"Direction");
+        this.typeHandle = rtiamb.getParameterHandle(shotHandle,"Type");
         rtiamb.publishInteractionClass(shotHandle);
 
     }

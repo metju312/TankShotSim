@@ -208,6 +208,9 @@
 					<name>TargetID</name>
 					<dataType>HLAinteger32BE</dataType>
 					<semantics>Whether the food was the correct temperature</semantics>
+					<name>HitDirection</name>
+					<dataType>Vector3</dataType>
+					<semantics>Whether the food was the correct temperature</semantics>
 				</parameter>
 
 			</interactionClass>
