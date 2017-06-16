@@ -37,14 +37,6 @@ public class StatisticFederate {
     protected int hitCount = 0;
     protected int missCount = 0;
 
-
-    private boolean bulletInTheAir = false;
-    private boolean isRegistered = false;
-    private Vector3 bulletPosition;
-    private Vector3 bulletVelocity;
-    private int bulletId = 1;
-
-
     protected InteractionClassHandle shotHandle;
 
     protected InteractionClassHandle hitHandle;
@@ -207,8 +199,6 @@ public class StatisticFederate {
     }
 
     private void mainLoop() throws RTIexception, InterruptedException{
-        int krok = 0;
-        Random generator = new Random();
         while (fedamb.running)
         {
             advanceTime( 1.0 );
