@@ -32,6 +32,7 @@ public class BulletsFederate {
 
 
     private boolean bulletInTheAir = false;
+    private boolean isRegistered = false;
     private Vector3 bulletPosition;
     private Vector3 bulletVelocity;
     private int bulletId = 1;
@@ -230,12 +231,13 @@ public class BulletsFederate {
         Random generator = new Random();
         while (fedamb.running)
         {
-            if(generator.nextDouble()<0.19)shotBullet(new Vector3(0.0,0.0,0.0),new Vector3(0.5,0.5,0.1),101);
+
             if(bulletInTheAir)
             {
+                if(!isRegistered)registerBulletObject();
                 moveBullet();
+                krok++;
             }
-            krok++;
             if(krok>10)
             {
                 krok=0;
@@ -257,12 +259,12 @@ public class BulletsFederate {
         attributes.put(bulletIdHandle,idValue.toByteArray());
         rtiamb.updateAttributeValues(bulletInstanceHandle,attributes,generateTag());
         log( "Dodano obiekt pocisk, handle=" + bulletInstanceHandle );
+        isRegistered=true;
     }
 
     public void shotBullet(Vector3 pos, Vector3 dir, int type) throws RestoreInProgress, ObjectClassNotDefined, ObjectClassNotPublished, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected, ObjectInstanceNotKnown, AttributeNotDefined, AttributeNotOwned {
         if(!bulletInTheAir)
         {
-            registerBulletObject();
             bulletInTheAir = true;
             bulletPosition=pos;
             bulletVelocity = dir;
@@ -286,7 +288,7 @@ public class BulletsFederate {
 
     private void destroyBullet() throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
         rtiamb.deleteObjectInstance( bulletInstanceHandle, generateTag() );
-
+        isRegistered=false;
         bulletInTheAir=false;
         bulletId++;
         log("pocisk zakończył swój lot");
