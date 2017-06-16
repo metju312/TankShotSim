@@ -3,7 +3,7 @@ package bullet;
 import Helpers.Vector3;
 import hla.rti1516e.*;
 import hla.rti1516e.encoding.*;
-import hla.rti1516e.exceptions.FederateInternalError;
+import hla.rti1516e.exceptions.*;
 import hla.rti1516e.time.HLAfloat64Time;
 
 public class BulletsFederateAmbassador extends NullFederateAmbassador {
@@ -123,46 +123,47 @@ public class BulletsFederateAmbassador extends NullFederateAmbassador {
         builder.append( " handle=" + interactionClass );
         if( interactionClass.equals(federate.shotHandle) )
         {
+            //stworzenie factory
+            DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+            {
+                public HLAfloat64BE createElement( int index )
+                {
+                    return federate.encoderFactory.createHLAfloat64BE();
+                }
+            };
+
             builder.append( " Czołg wystrzelił ! " );
-            HLAfixedArray<HLAfloat64BE> data =
-                    federate.encoderFactory.createHLAfixedArray( new DataElementFactory<HLAfloat64BE>()
-                                                                 {
-                                                                     public HLAfloat64BE createElement( int index )
-                                                                     {
-                                                                         return federate.encoderFactory.createHLAfloat64BE();
-                                                                     }
-                                                                 }, 3 );
-            builder.append(data.get(0).getValue()+"  aaaaaa ");
+            HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
             try {
-                data.decode(theParameters.get(federate.shotPositionHandle));
+                vector.decode(theParameters.get(federate.shotPositionHandle));
             } catch (DecoderException e) {
                 e.printStackTrace();
             }
-            builder.append(data.get(0).getValue());
-        }
+            Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
 
-        // print the tag
-        builder.append( ", tag=" + new String(tag) );
-        // print the time (if we have it) we'll get null if we are just receiving
-        // a forwarded call from the other reflect callback above
-        if( time != null )
-        {
-            builder.append( ", time=" + ((HLAfloat64Time)time).getValue() );
-        }
 
-        // print the parameer information
-        builder.append( ", parameterCount=" + theParameters.size() );
-        builder.append( "\n" );
-        for( ParameterHandle parameter : theParameters.keySet() )
-        {
-            // print the parameter handle
-            builder.append( "\tparamHandle=" );
-            builder.append( parameter );
-            // print the parameter value
-            builder.append( ", paramValue=" );
-            builder.append( theParameters.get(parameter).length );
-            builder.append( " bytes" );
-            builder.append( "\n" );
+            try {
+                vector.decode(theParameters.get(federate.directionHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            Vector3 direction = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+
+
+            HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
+            try {
+                typeData.decode(theParameters.get(federate.typeHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+
+            int type = typeData.getValue();
+
+            try {
+                federate.shotBullet(position,direction,type);
+            } catch (RTIexception restoreInProgress) {
+                restoreInProgress.printStackTrace();
+            }
         }
 
         log( builder.toString() );
