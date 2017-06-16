@@ -25,6 +25,7 @@ public class TargetsFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
 
+
     private RTIambassador rtiamb;
     private TargetsFederateAmbassador fedamb;
     private final double timeStep           = 10.0;
@@ -33,6 +34,7 @@ public class TargetsFederate {
 
     public final double generateTargetChance = 0.05;
 
+    private int maxTargetId=0;
 
     protected List<Target> targets = new ArrayList<>();
 
@@ -152,12 +154,14 @@ public class TargetsFederate {
         this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
 
         this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
+
         this.targetIdHandle = rtiamb.getAttributeHandle(targetHandle,"TargetID");
         this.targetPositionHandle = rtiamb.getAttributeHandle(targetHandle,"Position");
 
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(targetIdHandle);
         attributes.add(targetPositionHandle);
+
         rtiamb.publishObjectClassAttributes(targetHandle,attributes);
 
         rtiamb.subscribeInteractionClass(hitHandle);
@@ -206,6 +210,12 @@ public class TargetsFederate {
             advanceTime( 1.0 );
             log( "Time Advanced to " + fedamb.federateTime);
 
+            for (Target target:targets)
+            {
+                if(!target.isRegistered)registerTargetObject(target);
+                moveTarget(target);
+            }
+
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -214,17 +224,44 @@ public class TargetsFederate {
         }
     }
 
-    private void generateTarget() {
-        //generateObjectTarget
-//        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(2);
-//        HLAfixedArray<HLAfloat64BE> shotPositionValue = encoderFactory.createHLAfixedArray(wrapFloatData(position.toFloatArray()));
-//        HLAfixedArray<HLAfloat64BE> DirectionValue = encoderFactory.createHLAfixedArray(wrapFloatData(position.toFloatArray()));
-//        HLAinteger32BE typeValue = encoderFactory.createHLAinteger32BE( bulletType );
-//        parameters.put( shotPositionHandle, shotPositionValue.toByteArray() );
-//        parameters.put( directionHandle, DirectionValue.toByteArray() );
-//        parameters.put( typeHandle, typeValue.toByteArray() );
-//        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead );
-//        rtiamb.sendInteraction(shotHandle,parameters,generateTag(),time);
+    private void moveTarget(Target target)
+    {
+
+    }
+
+    private void generateTarget() throws SaveInProgress, AttributeNotDefined, ObjectInstanceNotKnown, RestoreInProgress, NotConnected, ObjectClassNotDefined, InvalidLogicalTime, AttributeNotOwned, FederateNotExecutionMember, RTIinternalError, ObjectClassNotPublished {
+        Random generator = new Random();
+        int type = generator.nextInt(5);
+        switch (type)
+        {
+            case 0:
+            break;
+            case 1:
+                //break;
+            case 2:
+                //break;
+            case 3:
+                //break;
+            case 4:
+                //break;
+            case 5:
+                Target target = new Target(++maxTargetId,new Vector3(0.0,0.0,0.0));
+                targets.add(target);
+                log("Stworzono cel o id: "+maxTargetId);
+                break;
+        }
+    }
+
+    private void registerTargetObject(Target targetObject) throws SaveInProgress, RestoreInProgress, ObjectClassNotPublished, ObjectClassNotDefined, FederateNotExecutionMember, RTIinternalError, NotConnected, AttributeNotDefined, ObjectInstanceNotKnown, AttributeNotOwned, InvalidLogicalTime {
+        targetObject.setRtiInstance(rtiamb.registerObjectInstance(targetHandle));
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(2);
+        HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(targetObject.getId());
+        HLAfixedArray<HLAfloat64BE> positionValue = encoderFactory.createHLAfixedArray(wrapFloatData(targetObject.getPosition().toFloatArray()));
+        attributes.put(targetIdHandle,idValue.toByteArray());
+        attributes.put(targetPositionHandle,positionValue.toByteArray());
+        rtiamb.updateAttributeValues(targetObject.getRtiInstance(),attributes,generateTag(),timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
+        targetObject.isRegistered=true;
+        log( "Dodano obiekt celu, handle=" + targetObject.getRtiInstance());
     }
 
     public static void main(String[] args) {

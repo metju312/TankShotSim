@@ -250,7 +250,7 @@ public class TankFederate
     private void shotBullet(int bulletType) throws RTIexception
     {
         ammo--;
-        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(2);
+        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(3);
         HLAfixedArray<HLAfloat64BE> shotPositionValue = encoderFactory.createHLAfixedArray(wrapFloatData(position.toFloatArray()));
         HLAfixedArray<HLAfloat64BE> DirectionValue = encoderFactory.createHLAfixedArray(wrapFloatData(position.toFloatArray()));
         HLAinteger32BE typeValue = encoderFactory.createHLAinteger32BE( bulletType );
