@@ -212,7 +212,7 @@ public class StatisticFederate {
         while (fedamb.running)
         {
             advanceTime( 1.0 );
-            log( "Time Advanced to " + fedamb.federateTime + ", Shots: " + shotCount + ", Hits: " + hitCount + "Prob: " + hitCount/(double)shotCount);
+            log( "Time Advanced to " + fedamb.federateTime);
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
