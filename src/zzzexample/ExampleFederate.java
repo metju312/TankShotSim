@@ -198,6 +198,7 @@ public class ExampleFederate
 		try
 		{
 			URL[] modules = new URL[]{
+				(new File("foms/HLAstandardMIM.xml")).toURI().toURL(),
 			    (new File("foms/RestaurantProcesses.xml")).toURI().toURL(),
 			    (new File("foms/RestaurantFood.xml")).toURI().toURL(),
 			    (new File("foms/RestaurantDrinks.xml")).toURI().toURL()
