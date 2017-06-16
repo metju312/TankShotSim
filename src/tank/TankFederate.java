@@ -23,7 +23,7 @@ import java.util.Random;
 public class TankFederate
 {
     public int ammo = 20;
-    public final double shotChance = 0.5;
+    public final double shotChance = 0.05;
     public Vector3 position= new Vector3(1.0,1.0, 0.0) ;
 
     public static final String READY_TO_RUN = "ReadyToRun";
@@ -59,6 +59,7 @@ public class TankFederate
         try
         {
             URL[] modules = new URL[]{
+                    (new File("foms/HLAstandardMIM.xml")).toURI().toURL(),
                     (new File("foms/TankSim.xml")).toURI().toURL(),
                     (new File("foms/RestaurantFood.xml")).toURI().toURL(),
                     (new File("foms/RestaurantDrinks.xml")).toURI().toURL()
@@ -204,6 +205,19 @@ public class TankFederate
     private void mainLoop() throws RTIexception
     {
         Random generator = new Random();
+        int bulletType =100+ generator.nextInt(4);
+        shotBullet(bulletType);
+        log("Wystrzelono poscisk");
+        log("Celowanie");
+
+        // 9.3 request a time advance and wait until we get it
+        advanceTime( 1.0 );
+        log( "Time Advanced to " + fedamb.federateTime );
+        try {
+        Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         while( ammo>0)
         {
             // 9.1 update the attribute values of the instance //
@@ -214,9 +228,9 @@ public class TankFederate
             if(generator.nextDouble()<shotChance)
             {
                 // 9.2 send an interaction
-                int bulletType =100+ generator.nextInt(4);
+                bulletType =100+ generator.nextInt(4);
                 shotBullet(bulletType);
-                log("Wystrzelono poscisk typu : ");
+                log("Wystrzelono poscisk");
             }
             else
                 log("Celowanie");
