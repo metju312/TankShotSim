@@ -1,6 +1,7 @@
 package environment;
 
 
+import bullet.Bullet;
 import hla.rti1516e.*;
 import hla.rti1516e.encoding.EncoderFactory;
 import hla.rti1516e.exceptions.*;
@@ -23,6 +24,7 @@ public class EnvironmentFederate {
     private HLAfloat64TimeFactory timeFactory; // set when we join
     protected EncoderFactory encoderFactory;
 
+    protected Bullet bullet;
 
     protected ObjectClassHandle atmosphereHandle;
     protected AttributeHandle windDirectoryHandle;
