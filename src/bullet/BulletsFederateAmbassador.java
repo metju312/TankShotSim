@@ -85,6 +85,74 @@ public class BulletsFederateAmbassador extends NullFederateAmbassador {
     }
 
 
+    @Override
+    public void reflectAttributeValues( ObjectInstanceHandle theObject,
+                                        AttributeHandleValueMap theAttributes,
+                                        byte[] tag,
+                                        OrderType sentOrdering,
+                                        TransportationTypeHandle theTransport,
+                                        LogicalTime time,
+                                        OrderType receivedOrdering,
+                                        SupplementalReflectInfo reflectInfo )
+            throws FederateInternalError
+    {
+        StringBuilder builder = new StringBuilder("Reflection for");
+        for( AttributeHandle attributeHandle : theAttributes.keySet() )
+        {
+            if(attributeHandle.equals(federate.windHandle)){
+                builder.append(" Wind: ");
+
+                //stworzenie factory
+                DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+                {
+                    public HLAfloat64BE createElement( int index )
+                    {
+                        return federate.encoderFactory.createHLAfloat64BE();
+                    }
+                };
+
+                HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+                try {
+                    vector.decode(theAttributes.get(federate.windHandle));
+                } catch (DecoderException e) {
+                    e.printStackTrace();
+                }
+                Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+
+                builder.append(position.toStirng());
+
+
+            } else if(attributeHandle.equals(federate.temperatureHandle)){
+                builder.append( " Temperature=" );
+
+
+                HLAfloat64BE typeData = federate.encoderFactory.createHLAfloat64BE();
+                try {
+                    typeData.decode(theAttributes.get(federate.temperatureHandle));
+                } catch (DecoderException e) {
+                    e.printStackTrace();
+                }
+                double temperature = typeData.getValue();
+                builder.append(temperature);
+                federate.temperature = temperature;
+            } else if(attributeHandle.equals(federate.pressureHandle)){
+                builder.append( " Pressure=" );
+
+
+                HLAfloat64BE typeData = federate.encoderFactory.createHLAfloat64BE();
+                try {
+                    typeData.decode(theAttributes.get(federate.pressureHandle));
+                } catch (DecoderException e) {
+                    e.printStackTrace();
+                }
+                double pressure = typeData.getValue();
+                builder.append(pressure);
+                federate.pressure = pressure;
+            }
+        }
+        log( builder.toString() );
+    }
+
     public void receiveInteraction( InteractionClassHandle interactionClass,
                                     ParameterHandleValueMap theParameters,
                                     byte[] tag,

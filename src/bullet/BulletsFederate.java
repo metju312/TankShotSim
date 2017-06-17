@@ -37,9 +37,9 @@ public class BulletsFederate {
     private Vector3 bulletVelocity;
     private int bulletId = 1;
 
-    private Vector3 wind;
-    private double temperature;
-    private double pressure;
+    protected Vector3 wind;
+    protected double temperature;
+    protected double pressure;
 
 
     protected ObjectClassHandle bulletHandle;
