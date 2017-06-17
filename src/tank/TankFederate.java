@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -27,7 +29,13 @@ public class TankFederate
 {
     public int ammo = 20;
     public final double shotChance = 0.05;
-    public Vector3 position= new Vector3(1.0,1.0, 0.0) ;
+
+    private final int reloadTime = 10;
+    private final double maxSpeed = 1.0;
+    private final double acceleration = 0.1;
+    private final double bulletSpeed = 5.0;
+
+    public Vector3 position= new Vector3(20.0,20.0, 1.0) ;
 
     public static final String READY_TO_RUN = "ReadyToRun";
 
@@ -48,7 +56,15 @@ public class TankFederate
     protected ParameterHandle directionHandle;
     protected ParameterHandle typeHandle;
 
-    protected List<Vector3> terrain = new ArrayList<>();
+    //protected double[][] terrain;
+    protected Map<Integer,Map<Integer,Double>> terrain;
+
+    protected ObjectInstanceHandle[][] terrainHandles;
+
+    protected int chosenTarget=-1;
+
+    private Vector3 speed;
+
     protected List<Target> targets = new ArrayList<>();
 
 // Metody RTI
@@ -184,7 +200,7 @@ public class TankFederate
 
     }
 
-    private void advanceTime( double timestep ) throws RTIexception
+    private void advanceTime( double timestep) throws RTIexception
     {
         // request the advance
         fedamb.isAdvancing = true;
@@ -205,6 +221,10 @@ public class TankFederate
 
     private void run(String federateName, String federationName) throws Exception {
         initializeFederate(federateName,federationName);
+        terrain = new HashMap<>();
+        terrainHandles = new ObjectInstanceHandle[50][50];
+        targets = new ArrayList<>();
+        speed = new Vector3(0,0,0);
         mainLoop();
         finalizeFederate(federationName);
     }
@@ -212,36 +232,39 @@ public class TankFederate
     private void mainLoop() throws RTIexception
     {
         Random generator = new Random();
-        int bulletType =100+ generator.nextInt(4);
-        shotBullet(bulletType);
-        log("Wystrzelono poscisk");
-        log("Celowanie");
-
-        // 9.3 request a time advance and wait until we get it
-        advanceTime( 1.0 );
-        log( "Time Advanced to " + fedamb.federateTime );
-        try {
-        Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        int reloadingTimer = 0;
         while( ammo>0)
         {
-            // 9.1 update the attribute values of the instance //
-            //updateAttributeValues( objectHandle );
-
-
-
+            if(chosenTarget<0) {
+                int targetsNumber = targets.size();
+                if (targetsNumber > 0)
+                {
+                    chosenTarget= generator.nextInt(targetsNumber);
+                    log("Wybrano cel o handle = "+chosenTarget);
+                }
+            }
+            if(chosenTarget>=0)
+            {
+                moveTank();
+                if(reloadingTimer<=0)
+                {
+                    int bulletType =100+ generator.nextInt(4);
+                    shotBullet(bulletType);
+                    log("Wystrzelono poscisk");
+                    reloadingTimer=reloadTime;
+                }
+                else reloadingTimer--;
+            }
+            /* nie usuwam bo może być potrzebne do tesotwania
             if(generator.nextDouble()<shotChance)
             {
-                // 9.2 send an interaction
                 bulletType =100+ generator.nextInt(4);
                 shotBullet(bulletType);
                 log("Wystrzelono poscisk");
             }
             else
                 log("Celowanie");
-
+*/
             // 9.3 request a time advance and wait until we get it
             advanceTime( 1.0 );
             log( "Time Advanced to " + fedamb.federateTime );
@@ -254,12 +277,49 @@ public class TankFederate
         }
     }
 
+    private void moveTank()
+    {
+        Vector3 dir = targets.get(chosenTarget).getPosition().distanceFrom(position);
+        dir.normalize();
+        double speedNorm= speed.dotProduct(dir);
+        if(speedNorm<0.0)speedNorm=0.0;
+        dir.timesA(speedNorm);
+        dir.timesA(acceleration+1.0);
+
+    }
+
+    private double getZ(double x, double y)
+    {
+        int leftDownX, leftDownY;
+        double leftDownDistance, leftUpDistance, rightUpDistance, rightDownDistance;
+        double leftDownZ, leftUpZ, rightUpZ, rightDownZ;
+        leftDownX = (int)x;
+        leftDownY = (int)y;
+        leftDownZ = terrain.get(leftDownX).get(leftDownY);
+        leftUpZ = terrain.get(leftDownX).get(leftDownY+1);
+        rightDownZ = terrain.get(leftDownX+1).get(leftDownY);
+        rightUpZ = terrain.get(leftDownX+1).get(leftDownY+1);
+        leftDownDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(y-leftDownY,2));
+        leftUpDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(leftDownY+1-y,2));
+        rightUpDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(leftDownY+1-y,2));
+        double z=0.0;
+        return z;
+    }
+
     private void shotBullet(int bulletType) throws RTIexception
     {
         ammo--;
+        Vector3 dir = targets.get(chosenTarget).getPosition().distanceFrom(position);
+        dir.normalize();
+        dir.timesA(bulletSpeed);
+        sendShotInteraction(bulletType,dir);
+    }
+
+    private void sendShotInteraction(int bulletType, Vector3 direction) throws RTIexception
+    {
         ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(3);
         HLAfixedArray<HLAfloat64BE> shotPositionValue = encoderFactory.createHLAfixedArray(wrapFloatData(position.toFloatArray()));
-        HLAfixedArray<HLAfloat64BE> DirectionValue = encoderFactory.createHLAfixedArray(wrapFloatData(position.toFloatArray()));
+        HLAfixedArray<HLAfloat64BE> DirectionValue = encoderFactory.createHLAfixedArray(wrapFloatData(direction.toFloatArray()));
         HLAinteger32BE typeValue = encoderFactory.createHLAinteger32BE( bulletType );
         parameters.put( shotPositionHandle, shotPositionValue.toByteArray() );
         parameters.put( directionHandle, DirectionValue.toByteArray() );
@@ -282,6 +342,7 @@ public class TankFederate
             rtie.printStackTrace();
         }
     }
+
 
 
 
@@ -318,6 +379,12 @@ public class TankFederate
     private byte[] generateTag()
     {
         return ("(timestamp) "+System.currentTimeMillis()).getBytes();
+    }
+
+    private double abs(double a)
+    {
+        if(a>0)return a;
+        else return -a;
     }
 
 

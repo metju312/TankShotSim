@@ -33,6 +33,13 @@ public class Vector3
         z+=b.z;
     }
 
+    public void timesA(double a)
+    {
+        x*=a;
+        y*=a;
+        z*=a;
+    }
+
     public Vector3 distanceFrom(Vector3 b)
     {
         return new Vector3(this.x-b.x,y-b.y,z-b.z);
@@ -45,9 +52,25 @@ public class Vector3
                            this.x*vecB.y - this.y*vecB.x);
     }
 
+    public double dotProduct(Vector3 vecB)
+    {
+        return this.x*vecB.x+this.y*vecB.y+this.z*vecB.z;
+    }
+
     public double norm()
     {
         return Math.sqrt(x*x+y*y+z*z);
+    }
+
+    public void normalize()
+    {
+        double norm= this.norm();
+        if (norm>0)
+        {
+            x = x / norm;
+            y = y / norm;
+            z = z / norm;
+        }
     }
 
     public String toStirng()

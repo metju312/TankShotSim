@@ -105,7 +105,7 @@ public class EnvironmentFederate {
         }
     }
 
-    //private Map<ObjectInstanceHandle, Double> terrain;//A może tak? Wydaje się być najlepszym sposobem
+    //private Map<ObjectInstanceHandle, Double> terrain;
 
     private Shape[][] terrain;
     //private double[][] terrain;

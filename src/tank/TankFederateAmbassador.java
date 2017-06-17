@@ -19,6 +19,8 @@ import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
 import target.Target;
 
+import java.util.ArrayList;
+
 
 public class TankFederateAmbassador extends NullFederateAmbassador
 {
@@ -166,7 +168,7 @@ public class TankFederateAmbassador extends NullFederateAmbassador
                     e.printStackTrace();
                 }
                 Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-                federate.terrain.add(position);
+                federate.terrain.get((int)(position.y+0.5)).put((int)(position.y+0.5),position.z);
 
                 builder.append(position.toStirng());
             } else if(attributeHandle.equals(federate.targetIdHandle)){
@@ -244,3 +246,4 @@ public class TankFederateAmbassador extends NullFederateAmbassador
     }
 
     }
+
