@@ -32,7 +32,7 @@ public class TargetsFederate {
     private HLAfloat64TimeFactory timeFactory; // set when we join
     protected EncoderFactory encoderFactory;
 
-    public final double generateTargetChance = 0.05;
+    public final double generateTargetChance = 0.1;
 
     private int maxTargetId=0;
 
