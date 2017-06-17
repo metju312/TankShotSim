@@ -90,7 +90,7 @@
 				</attribute>
                 <attribute>
                     <name>Temperature</name>
-                    <dataType>HLAinteger32BE</dataType>
+                    <dataType>HLAfloat64BE</dataType>
                     <updateType>Conditional</updateType>
                     <updateCondition>Customer request</updateCondition>
                     <ownership>NoTransfer</ownership>
@@ -101,7 +101,7 @@
                 </attribute>
                 <attribute>
                     <name>Pressure</name>
-                    <dataType>HLAinteger32BE</dataType>
+                    <dataType>HLAfloat64BE</dataType>
                     <updateType>Conditional</updateType>
                     <updateCondition>Customer request</updateCondition>
                     <ownership>NoTransfer</ownership>
