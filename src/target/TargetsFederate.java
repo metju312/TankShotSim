@@ -217,6 +217,7 @@ public class TargetsFederate {
 
     private void mainLoop() throws RTIexception, InterruptedException{
         Random generator = new Random();
+        generateTarget();
         while (fedamb.running)
         {
             if(generator.nextDouble() < generateTargetChance){
