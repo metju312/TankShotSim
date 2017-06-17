@@ -269,9 +269,11 @@ public class BulletsFederate {
 
     private void registerBulletObject() throws SaveInProgress, RestoreInProgress, ObjectClassNotPublished, ObjectClassNotDefined, FederateNotExecutionMember, RTIinternalError, NotConnected, ObjectInstanceNotKnown, AttributeNotDefined, AttributeNotOwned {
         bulletInstanceHandle= rtiamb.registerObjectInstance(bulletHandle);
-        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(1);
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(2);
         HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(bulletId);
+        HLAfixedArray<HLAfloat64BE> positionValue = encoderFactory.createHLAfixedArray(wrapFloatData(bulletPosition.toFloatArray()));
         attributes.put(bulletIdHandle,idValue.toByteArray());
+        attributes.put(bulletPositionHandle,positionValue.toByteArray());
         rtiamb.updateAttributeValues(bulletInstanceHandle,attributes,generateTag());
         log( "Dodano obiekt pocisk, handle=" + bulletInstanceHandle );
         isRegistered=true;
