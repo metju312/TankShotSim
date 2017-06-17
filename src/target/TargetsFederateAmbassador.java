@@ -1,8 +1,9 @@
 package target;
 
+import Helpers.Vector3;
 import bullet.BulletsFederate;
 import hla.rti1516e.*;
-import hla.rti1516e.encoding.HLAfloat64BE;
+import hla.rti1516e.encoding.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
 public class TargetsFederateAmbassador extends NullFederateAmbassador {
@@ -81,6 +82,50 @@ public class TargetsFederateAmbassador extends NullFederateAmbassador {
     {
         this.federateTime = ((HLAfloat64Time)time).getValue();
         this.isAdvancing = false;
+    }
+
+
+    @Override
+    public void reflectAttributeValues( ObjectInstanceHandle theObject,
+                                        AttributeHandleValueMap theAttributes,
+                                        byte[] tag,
+                                        OrderType sentOrdering,
+                                        TransportationTypeHandle theTransport,
+                                        LogicalTime time,
+                                        OrderType receivedOrdering,
+                                        SupplementalReflectInfo reflectInfo )
+            throws FederateInternalError
+    {
+
+        StringBuilder builder = new StringBuilder("");
+        for( AttributeHandle attributeHandle : theAttributes.keySet() )
+        {
+            builder.append("Reflection for ");
+            if(attributeHandle.equals(federate.shapeHandle)){
+                builder.append("Terrain: ");
+
+                //stworzenie factory
+                DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+                {
+                    public HLAfloat64BE createElement( int index )
+                    {
+                        return federate.encoderFactory.createHLAfloat64BE();
+                    }
+                };
+
+                HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+                try {
+                    vector.decode(theAttributes.get(federate.shapeHandle));
+                } catch (DecoderException e) {
+                    e.printStackTrace();
+                }
+                Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+                federate.terrain.add(position);
+
+                builder.append(position.toStirng());
+            }
+        }
+        log( builder.toString() );
     }
 
 

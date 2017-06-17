@@ -37,6 +37,7 @@ public class TargetsFederate {
     private int maxTargetId=0;
 
     protected List<Target> targets = new ArrayList<>();
+    protected List<Vector3> terrain = new ArrayList<>();
 
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
