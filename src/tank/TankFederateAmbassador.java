@@ -144,10 +144,9 @@ public class TankFederateAmbassador extends NullFederateAmbassador
             throws FederateInternalError
     {
 
-        StringBuilder builder = new StringBuilder("");
+        StringBuilder builder = new StringBuilder("Reflection for: ");
         for( AttributeHandle attributeHandle : theAttributes.keySet() )
         {
-            builder.append("Reflection for ");
             if(attributeHandle.equals(federate.shapeHandle)){
                 builder.append("Terrain: ");
 
@@ -172,7 +171,8 @@ public class TankFederateAmbassador extends NullFederateAmbassador
                 builder.append(position.toStirng());
             } else if(attributeHandle.equals(federate.targetIdHandle)){
                 if(!targetExists(theObject)){
-                    builder.append("New Target: ");
+                    builder.append("New Target handle=");
+                    builder.append(theObject);
                     Target target = new Target();
 
                     HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
@@ -187,7 +187,7 @@ public class TankFederateAmbassador extends NullFederateAmbassador
                     federate.targets.add(target);
                 }
             }else if(attributeHandle.equals(federate.targetPositionHandle)){
-                builder.append("Modify Position of Target: ");
+                builder.append(", modify position of Target handle=");
                 builder.append(theObject);
                 Target target = getTarget(theObject);
 
@@ -207,8 +207,8 @@ public class TankFederateAmbassador extends NullFederateAmbassador
                     e.printStackTrace();
                 }
                 Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-                builder.append(" position: ");
-                builder.append(position);
+                builder.append(", position: ");
+                builder.append(position.toStirng());
                 target.setPosition(position);
             }
         }
