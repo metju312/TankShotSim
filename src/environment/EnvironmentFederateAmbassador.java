@@ -193,7 +193,6 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
 
                 builder.append(position.toStirng());
             }
-            builder.append( "\n" );
         }
         log( builder.toString() );
     }
