@@ -173,7 +173,7 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
                 builder.append(" ");
 
             } else if(attributeHandle.equals(federate.bulletPositionHandle)){
-                builder.append( "BulletPosition= " );
+                builder.append( " BulletPosition= " );
 
                 //stworzenie factory
                 DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
@@ -195,7 +195,7 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
                 builder.append(position.toStirng());
             } else if(attributeHandle.equals(federate.targetIdHandle)){
                 if(!targetExists(theObject)){
-                    builder.append("New Target handle=");
+                    builder.append(" New Target handle=");
                     builder.append(theObject);
                     Target target = new Target();
 

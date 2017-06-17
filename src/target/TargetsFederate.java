@@ -295,7 +295,7 @@ public class TargetsFederate {
     //Pomocnicze//
     private void log( String message )
     {
-        System.out.println( "StatisticFederate   : " + message );
+        System.out.println( "TargetsFederate   : " + message );
     }
 
     private void waitForUser()
