@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -78,7 +79,7 @@ public class EnvironmentFederate {
     protected AttributeHandle targetPositionHandle;
 
 
-    private Map<Integer, Vector3> targets;
+    protected List<Target> targets = new ArrayList<>();
     protected Map<ObjectInstanceHandle,Integer> targetsInstances;
 
     private boolean bulletInTheAir = false;
@@ -440,9 +441,8 @@ public class EnvironmentFederate {
 
     private void updateBulletPosition(Vector3 position)
     {
-        for(Integer id:targets.keySet())
-        {
-            if (pointAndLineDistance(bulletPosition,position,targets.get(id))<=targetHitbox)bulletCollided=true;
+        for (Target target : targets) {
+            if (pointAndLineDistance(bulletPosition,position,target.getPosition())<=targetHitbox)bulletCollided=true;
         }
     }
 
