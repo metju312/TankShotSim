@@ -10,6 +10,7 @@ import hla.rti1516e.exceptions.*;
 import hla.rti1516e.time.HLAfloat64Interval;
 import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
+import target.Target;
 import zzzexample.ExampleFederateAmbassador;
 
 import javax.smartcardio.ATR;
@@ -18,6 +19,8 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class TankFederate
@@ -44,6 +47,9 @@ public class TankFederate
     protected ParameterHandle shotPositionHandle;
     protected ParameterHandle directionHandle;
     protected ParameterHandle typeHandle;
+
+    protected List<Vector3> terrain = new ArrayList<>();
+    protected List<Target> targets = new ArrayList<>();
 
 // Metody RTI
 

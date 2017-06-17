@@ -1,5 +1,6 @@
 package tank;
 
+import Helpers.Vector3;
 import hla.rti1516e.NullFederateAmbassador;
 import hla.rti1516e.AttributeHandle;
 import hla.rti1516e.AttributeHandleValueMap;
@@ -13,11 +14,10 @@ import hla.rti1516e.ParameterHandle;
 import hla.rti1516e.ParameterHandleValueMap;
 import hla.rti1516e.SynchronizationPointFailureReason;
 import hla.rti1516e.TransportationTypeHandle;
-import hla.rti1516e.encoding.DecoderException;
-import hla.rti1516e.encoding.HLAinteger16BE;
-import hla.rti1516e.encoding.HLAinteger32BE;
+import hla.rti1516e.encoding.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
+import target.Target;
 
 
 public class TankFederateAmbassador extends NullFederateAmbassador
@@ -106,8 +106,8 @@ public class TankFederateAmbassador extends NullFederateAmbassador
             throws FederateInternalError
     {
         //tutaj powinno być dodanie nowego obiektu który się obserwóje, typu
-        log( "Discoverd Object: handle=" + theObject + ", classHandle=" +
-                theObjectClass + ", name=" + objectName );
+//        log( "Discoverd Object: handle=" + theObject + ", classHandle=" +
+//                theObjectClass + ", name=" + objectName );
     }
 
     @Override
@@ -143,53 +143,94 @@ public class TankFederateAmbassador extends NullFederateAmbassador
                                         SupplementalReflectInfo reflectInfo )
             throws FederateInternalError
     {
-        StringBuilder builder = new StringBuilder( "Reflection for object:" );
 
-        // print the handle
-        builder.append( " handle=" + theObject );
-        // print the tag
-        builder.append( ", tag=" + new String(tag) );
-        // print the time (if we have it) we'll get null if we are just receiving
-        // a forwarded call from the other reflect callback above
-        if( time != null )
-        {
-            builder.append( ", time=" + ((HLAfloat64Time)time).getValue() );
-        }
-
-        // print the attribute information
-        builder.append( ", attributeCount=" + theAttributes.size() );
-        builder.append( "\n" );
+        StringBuilder builder = new StringBuilder("");
         for( AttributeHandle attributeHandle : theAttributes.keySet() )
         {
-            // print the attibute handle
-            builder.append( "\tattributeHandle=" );
+            builder.append("Reflection for ");
+            if(attributeHandle.equals(federate.shapeHandle)){
+                builder.append("Terrain: ");
 
-            // if we're dealing with Flavor, decode into the appropriate enum value
-            if( attributeHandle.equals("federate.-jakiś handle atrybutu, zapisany w federacie-") )
-            {
-                //tutaj edytujemy
-                builder.append( attributeHandle );
-                builder.append( " (Flavor)    " );
-                builder.append( ", attributeValue=" );
-                //builder.append( decodeFlavor(theAttributes.get(attributeHandle)) ); odpowiedni dekoder
-            }
-            else if( attributeHandle.equals("federate.cupsHandle") )
-            {
-                builder.append( attributeHandle );
-                builder.append( " (NumberCups)" );
-                builder.append( ", attributeValue=" );
-                //builder.append( decodeNumCups(theAttributes.get(attributeHandle)) );
-            }
-            else
-            {
-                builder.append( attributeHandle );
-                builder.append( " (Unknown)   " );
-            }
+                //stworzenie factory
+                DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+                {
+                    public HLAfloat64BE createElement( int index )
+                    {
+                        return federate.encoderFactory.createHLAfloat64BE();
+                    }
+                };
 
-            builder.append( "\n" );
+                HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+                try {
+                    vector.decode(theAttributes.get(federate.shapeHandle));
+                } catch (DecoderException e) {
+                    e.printStackTrace();
+                }
+                Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+                federate.terrain.add(position);
+
+                builder.append(position.toStirng());
+            } else if(attributeHandle.equals(federate.targetIdHandle)){
+                if(!targetExists(theObject)){
+                    builder.append("New Target: ");
+                    Target target = new Target();
+
+                    HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
+                    try {
+                        typeData.decode(theAttributes.get(federate.targetIdHandle));
+                    } catch (DecoderException e) {
+                        e.printStackTrace();
+                    }
+                    int id = typeData.getValue();
+                    target.setId(id);
+                    target.setRtiInstance(theObject);
+                    federate.targets.add(target);
+                }
+            }else if(attributeHandle.equals(federate.targetPositionHandle)){
+                builder.append("Modify Position of Target: ");
+                builder.append(theObject);
+                Target target = getTarget(theObject);
+
+                //stworzenie factory
+                DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+                {
+                    public HLAfloat64BE createElement( int index )
+                    {
+                        return federate.encoderFactory.createHLAfloat64BE();
+                    }
+                };
+
+                HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+                try {
+                    vector.decode(theAttributes.get(federate.targetPositionHandle));
+                } catch (DecoderException e) {
+                    e.printStackTrace();
+                }
+                Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+                builder.append(" position: ");
+                builder.append(position);
+                target.setPosition(position);
+            }
         }
-
         log( builder.toString() );
+    }
+
+    private boolean targetExists(ObjectInstanceHandle theObject) {
+        for (Target target : federate.targets) {
+            if(target.getRtiInstance().equals(theObject)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Target getTarget(ObjectInstanceHandle theObject){
+        for (Target target : federate.targets) {
+            if(target.getRtiInstance().equals(theObject)){
+                return target;
+            }
+        }
+        return null;
     }
 
     @Override
