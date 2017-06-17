@@ -288,21 +288,38 @@ public class TankFederate
 
     }
 
+    private double getZ(int x, int y)
+    {
+        Map<Integer, Double> mapAtX = terrain.get(x);
+        Double valueAtY;
+        if(mapAtX==null)return 0.0;
+        else valueAtY = mapAtX.get(y);
+        if(valueAtY==null)return 0.0;
+        else return valueAtY;
+    }
+
     private double getZ(double x, double y)
     {
         int leftDownX, leftDownY;
-        double leftDownDistance, leftUpDistance, rightUpDistance, rightDownDistance;
+        double leftDownDistance, leftUpDistance, rightUpDistance, rightDownDistance, sum;
         double leftDownZ, leftUpZ, rightUpZ, rightDownZ;
         leftDownX = (int)x;
         leftDownY = (int)y;
-        leftDownZ = terrain.get(leftDownX).get(leftDownY);
-        leftUpZ = terrain.get(leftDownX).get(leftDownY+1);
-        rightDownZ = terrain.get(leftDownX+1).get(leftDownY);
-        rightUpZ = terrain.get(leftDownX+1).get(leftDownY+1);
+        leftDownZ = getZ(leftDownX,leftDownY);
+        leftUpZ = getZ(leftDownX,leftDownY+1);
+        rightDownZ = getZ(leftDownX+1,leftDownY);
+        rightUpZ = getZ(leftDownX+1,leftDownY+1);
         leftDownDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(y-leftDownY,2));
         leftUpDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(leftDownY+1-y,2));
         rightUpDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(leftDownY+1-y,2));
-        double z=0.0;
+        rightDownDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(y-leftDownY,2));
+        double z=Math.min(Math.min(leftDownZ,leftUpZ),Math.min(rightDownZ,rightUpZ));
+        leftDownZ -= z;
+        leftUpZ -= z;
+        rightDownZ -= z;
+        rightUpZ -= z;
+        sum= leftDownDistance+leftUpDistance+rightDownDistance+rightUpDistance;
+        leftDownDistance = leftUpDistance/sum;
         return z;
     }
 
@@ -386,6 +403,7 @@ public class TankFederate
         if(a>0)return a;
         else return -a;
     }
+
 
 
 }
