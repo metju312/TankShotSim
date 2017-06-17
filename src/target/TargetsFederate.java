@@ -260,7 +260,7 @@ public class TargetsFederate {
             case 4:
                 //break;
             case 5:
-                Target target = new Target(++maxTargetId,new Vector3(0.0,0.0,0.0));
+                Target target = new Target(++maxTargetId,new Vector3(2.0,5.0,0.0));
                 targets.add(target);
                 registerTargetObject(target);
                 log("Stworzono cel o id: "+maxTargetId);

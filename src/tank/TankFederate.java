@@ -35,7 +35,7 @@ public class TankFederate
     private final double acceleration = 0.1;
     private final double bulletSpeed = 5.0;
 
-    public Vector3 position= new Vector3(20.0,20.0, 1.0) ;
+    public Vector3 position= new Vector3(5.0,33.0, 1.0) ;
 
     public static final String READY_TO_RUN = "ReadyToRun";
 
@@ -283,9 +283,12 @@ public class TankFederate
         dir.normalize();
         double speedNorm= speed.dotProduct(dir);
         if(speedNorm<0.0)speedNorm=0.0;
-        dir.timesA(speedNorm);
-        dir.timesA(acceleration+1.0);
-
+        if(speedNorm<maxSpeed)dir.timesA(acceleration+speedNorm);
+        else dir.timesA(speedNorm);
+        position.addVector(dir);
+        position.z=getZ(position.x,position.y)+1;
+        speed=dir;
+        log("Czołg poruszył się na pozycję : "+position.toStirng()+" z prędkością : "+speed.norm()+" / "+speed.toStirng());
     }
 
     private double getZ(int x, int y)
@@ -318,8 +321,19 @@ public class TankFederate
         leftUpZ -= z;
         rightDownZ -= z;
         rightUpZ -= z;
+        leftDownDistance = 1-leftDownDistance;
+        leftUpDistance = 1-leftUpDistance;
+        rightDownDistance = 1-rightDownDistance;
+        rightUpDistance = 1-rightUpDistance;
         sum= leftDownDistance+leftUpDistance+rightDownDistance+rightUpDistance;
-        leftDownDistance = leftUpDistance/sum;
+        leftDownDistance = leftDownDistance/sum;
+        leftUpDistance = leftUpDistance/sum;
+        rightDownDistance = rightDownDistance/sum;
+        rightUpDistance = rightUpDistance/sum;
+        z += leftDownZ*leftDownDistance+
+                leftUpZ*leftUpDistance+
+                rightDownZ*rightDownDistance+
+                rightUpZ*rightUpDistance;
         return z;
     }
 
