@@ -35,7 +35,7 @@ public class TankFederate
     private final double acceleration = 0.1;
     private final double bulletSpeed = 5.0;
 
-    public Vector3 position= new Vector3(5.0,33.0, 1.0) ;
+    public Vector3 position= new Vector3(14.0,2.0, 1.0) ;
 
     public static final String READY_TO_RUN = "ReadyToRun";
 
@@ -233,6 +233,7 @@ public class TankFederate
     {
         Random generator = new Random();
         int reloadingTimer = 0;
+
         while( ammo>0)
         {
             if(chosenTarget<0) {
@@ -267,6 +268,7 @@ public class TankFederate
 */
             // 9.3 request a time advance and wait until we get it
             advanceTime( 1.0 );
+
             log( "Time Advanced to " + fedamb.federateTime );
             try {
                 Thread.sleep(1000);
@@ -325,6 +327,10 @@ public class TankFederate
         leftUpDistance = 1-leftUpDistance;
         rightDownDistance = 1-rightDownDistance;
         rightUpDistance = 1-rightUpDistance;
+        if(leftDownDistance<0)leftDownDistance=0;
+        if(leftUpDistance<0)leftUpDistance=0;
+        if(rightDownDistance<0)rightDownDistance=0;
+        if(rightUpDistance<0)rightUpDistance=0;
         sum= leftDownDistance+leftUpDistance+rightDownDistance+rightUpDistance;
         leftDownDistance = leftDownDistance/sum;
         leftUpDistance = leftUpDistance/sum;
@@ -412,10 +418,17 @@ public class TankFederate
         return ("(timestamp) "+System.currentTimeMillis()).getBytes();
     }
 
-    private double abs(double a)
+    private void printTerrain(int maxX, int maxY)
     {
-        if(a>0)return a;
-        else return -a;
+        for(int y =0; y <maxY;y++)
+        {
+            StringBuilder builder = new StringBuilder();
+            for (int x = 0; x < maxX; x++)
+            {
+                builder.append(" "+getZ(x,y));
+            }
+            log(builder.toString());
+        }
     }
 
 

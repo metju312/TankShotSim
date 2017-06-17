@@ -347,10 +347,24 @@ public class EnvironmentFederate {
         int y=50;
         //Tymczasowy, przykładowy teren
         terrain=new Shape[x][y];
-        terrain[4][32] = new Shape( 2.4);
-        terrain[5][32] = new Shape( 3.5);
-        terrain[4][31] = new Shape(  2.0);
-        terrain[5][31] = new Shape(  2.9);
+        terrain[4][0] = new Shape( 2.4);
+        terrain[5][0] = new Shape( 3.5);
+        terrain[4][1] = new Shape(  2.0);
+        terrain[5][1] = new Shape(  2.9);
+        terrain[4][2] = new Shape(  2.0);
+        terrain[5][2] = new Shape(  2.9);
+        terrain[4][3] = new Shape(  2.0);
+        terrain[5][3] = new Shape(  2.9);
+        terrain[4][4] = new Shape(  2.0);
+        terrain[5][4] = new Shape(  2.9);
+        terrain[4][5] = new Shape(  2.0);
+        terrain[5][5] = new Shape(  2.9);
+        terrain[4][6] = new Shape(  2.0);
+        terrain[5][6] = new Shape(  2.9);
+        terrain[4][7] = new Shape(  2.0);
+        terrain[5][7] = new Shape(  2.9);
+        terrain[4][8] = new Shape(  2.0);
+        terrain[5][8] = new Shape(  2.9);
         //TODO: Faktyczny generator terenu
 
         for(int i=0;i<x;i++)
