@@ -33,8 +33,27 @@ public class Vector3
         z+=b.z;
     }
 
+    public Vector3 distanceFrom(Vector3 b)
+    {
+        return new Vector3(this.x-b.x,y-b.y,z-b.z);
+    }
+
+    public Vector3 crossProduct(Vector3 vecB)
+    {
+        return new Vector3(this.y*vecB.z - this.z*vecB.y,
+                           this.x*vecB.z - this.z*vecB.x,
+                           this.x*vecB.y - this.y*vecB.x);
+    }
+
+    public double norm()
+    {
+        return Math.sqrt(x*x+y*y+z*z);
+    }
+
     public String toStirng()
     {
         return "Składowe: x = " + x + "; y = "+y+"; z = "+z;
     }
+
+
 }

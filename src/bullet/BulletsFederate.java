@@ -37,10 +37,15 @@ public class BulletsFederate {
     private Vector3 bulletVelocity;
     private int bulletId = 1;
 
+    private Vector3 wind;
+    private double temperature;
+    private double pressure;
+
 
     protected ObjectClassHandle bulletHandle;
     protected AttributeHandle bulletIdHandle;
     protected AttributeHandle bulletPositionHandle;
+    protected AttributeHandle bulletTypeHandle;
 
     protected ObjectClassHandle atmosphereHandle;
     protected AttributeHandle windHandle;
@@ -55,8 +60,10 @@ public class BulletsFederate {
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
     protected ParameterHandle hitDirectionHandle;
+    protected ParameterHandle hitTypeHandle;
 
     protected ObjectInstanceHandle bulletInstanceHandle;
+    protected ObjectInstanceHandle atmosphereInstanceHandle;
 
 
 // Metody RTI
@@ -168,9 +175,11 @@ public class BulletsFederate {
         this.bulletHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Bullet");
         this.bulletIdHandle = rtiamb.getAttributeHandle(bulletHandle,"BulletID");
         this.bulletPositionHandle = rtiamb.getAttributeHandle(bulletHandle,"Position");
+        this.bulletTypeHandle = rtiamb.getAttributeHandle(bulletHandle,"Type");
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(bulletIdHandle);
         attributes.add(bulletPositionHandle);
+        attributes.add(bulletTypeHandle);
         rtiamb.publishObjectClassAttributes(bulletHandle,attributes);
 
         //Subskrycja na Atmosferę
@@ -195,6 +204,7 @@ public class BulletsFederate {
         this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
         this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
         this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
+        this.hitTypeHandle = rtiamb.getParameterHandle(hitHandle,"Type");
         rtiamb.subscribeInteractionClass(hitHandle);
     }
 
@@ -297,6 +307,13 @@ public class BulletsFederate {
         bulletInTheAir=false;
         bulletId++;
         log("pocisk zakończył swój lot");
+    }
+
+    protected void setAtmosphereValues(Vector3 wind, double pressure,double temperature)
+    {
+        this.wind=wind;
+        this.pressure=pressure;
+        this.temperature = temperature;
     }
 
     public static void main(String[] args) {

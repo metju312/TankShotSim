@@ -41,6 +41,7 @@ public class TargetsFederate {
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
     protected ParameterHandle hitDirectionHandle;
+    protected ParameterHandle hitTypeHandle;
 
     protected ObjectClassHandle targetHandle;
     protected AttributeHandle targetIdHandle;
@@ -158,6 +159,7 @@ public class TargetsFederate {
         this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
         this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
         this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
+        this.hitTypeHandle = rtiamb.getParameterHandle(hitHandle,"Type");
         rtiamb.subscribeInteractionClass(hitHandle);
 
         //Publikacja Celu

@@ -45,6 +45,7 @@ public class StatisticFederate {
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
     protected ParameterHandle hitDirectionHandle;
+    protected ParameterHandle hitTypeHandle;
 
     protected ObjectClassHandle targetHandle;
     protected AttributeHandle targetIdHandle;
@@ -166,6 +167,7 @@ public class StatisticFederate {
         this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
         this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
         this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
+        this.hitTypeHandle = rtiamb.getParameterHandle(hitHandle,"Type");
         rtiamb.subscribeInteractionClass(hitHandle);
 
         //Subskrybcja na Cel

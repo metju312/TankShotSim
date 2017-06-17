@@ -166,6 +166,17 @@
 					<order>TimeStamp</order>
 					<semantics>position of a bullet</semantics>
 				</attribute>
+				<attribute>
+					<name>Type</name>
+					<dataType>BulletType</dataType>
+					<updateType>Conditional</updateType>
+					<updateCondition>Customer request</updateCondition>
+					<ownership>NoTransfer</ownership>
+					<sharing>PublishSubscribe</sharing>
+					<transportation>HLAreliable</transportation>
+					<order>TimeStamp</order>
+					<semantics>Whether the food was served in a reasonable amount of time</semantics>
+				</attribute>
 			</objectClass>
 			
         </objectClass>
@@ -211,6 +222,11 @@
 					<name>HitDirection</name>
 					<dataType>Vector3</dataType>
 					<semantics>Whether the food was the correct temperature</semantics>
+				</parameter>
+				<parameter>
+					<name>Type</name>
+					<dataType>BulletType</dataType>
+					<semantics>Whether the food was served in a reasonable amount of time</semantics>
 				</parameter>
 
 			</interactionClass>

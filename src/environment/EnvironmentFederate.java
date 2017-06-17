@@ -14,6 +14,7 @@ import hla.rti1516e.ResignAction;
 import hla.rti1516e.encoding.EncoderFactory;
 import hla.rti1516e.encoding.HLAfixedArray;
 import hla.rti1516e.encoding.HLAfloat64BE;
+import hla.rti1516e.encoding.HLAinteger32BE;
 import hla.rti1516e.exceptions.*;
 import hla.rti1516e.exceptions.FederateNotExecutionMember;
 import hla.rti1516e.exceptions.FederateOwnsAttributes;
@@ -30,17 +31,22 @@ import hla.rti1516e.exceptions.SaveInProgress;
 import hla.rti1516e.time.HLAfloat64Interval;
 import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
+import target.Target;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class EnvironmentFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
+
+    private final double targetHitbox = 5.0;
 
     private RTIambassador rtiamb;
     private EnvironmentFederateAmbassador fedamb;
@@ -60,18 +66,31 @@ public class EnvironmentFederate {
     protected ObjectClassHandle bulletHandle;
     protected AttributeHandle bulletIdHandle;
     protected AttributeHandle bulletPositionHandle;
+    protected AttributeHandle bulletTypeHandle;
 
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
     protected ParameterHandle hitDirectionHandle;
+    protected ParameterHandle hitTypeHandle;
+
+    protected ObjectClassHandle targetHandle;
+    protected AttributeHandle targetIdHandle;
+    protected AttributeHandle targetPositionHandle;
+
+
+    private Map<Integer, Vector3> targets;
+    protected Map<ObjectInstanceHandle,Integer> targetsInstances;
 
     private boolean bulletInTheAir = false;
     private boolean bulletCollided = false;
     private Vector3 bulletPosition;
     private Vector3 bulletVelocity;
+    private int bulletType;
     private int bulletId = 1;
+    protected ObjectInstanceHandle bulletInstance;
 
-    protected hla.rti1516e.ObjectInstanceHandle atmosphereInstance;
+    protected ObjectInstanceHandle atmosphereInstance;
+
 
     //TODO:Jak zrealizować przechowywanie hanlderów na instancje?
     public class Shape
@@ -85,6 +104,8 @@ public class EnvironmentFederate {
         }
     }
 
+    //private Map<ObjectInstanceHandle, Double> terrain;//A może tak? Wydaje się być najlepszym sposobem
+
     private Shape[][] terrain;
     //private double[][] terrain;
 
@@ -92,7 +113,7 @@ public class EnvironmentFederate {
     private double temperature;
     private double pressure;
 
-    // Metody RTI
+    // Metody RTI - tego nie ruszamy
     private void initializeFederate(String federateName, String federationName) throws Exception{
         log("Tworzenie abasadorów i połączenia");
         rtiamb = RtiFactoryFactory.getRtiFactory().getRtiAmbassador();
@@ -177,7 +198,7 @@ public class EnvironmentFederate {
         }
     }
 
-//Metody pomocnicze RTI
+//Metody pomocnicze RTI - z tego ruszamy tylko publishAndSubscribe
 
     private void enableTimePolicy() throws Exception
     {
@@ -200,9 +221,11 @@ public class EnvironmentFederate {
         this.bulletHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Bullet");
         this.bulletIdHandle = rtiamb.getAttributeHandle(bulletHandle,"BulletID");
         this.bulletPositionHandle = rtiamb.getAttributeHandle(bulletHandle,"Position");
+        this.bulletTypeHandle = rtiamb.getAttributeHandle(bulletHandle,"Type");
         AttributeHandleSet attributes = rtiamb.getAttributeHandleSetFactory().create();
         attributes.add(bulletIdHandle);
         attributes.add(bulletPositionHandle);
+        attributes.add(bulletTypeHandle);
         rtiamb.subscribeObjectClassAttributes(bulletHandle, attributes);
 
         // Publikacja Atmosfery
@@ -227,7 +250,17 @@ public class EnvironmentFederate {
         this.hitHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.Hit");
         this.hitTargetIdHandle = rtiamb.getParameterHandle(hitHandle,"TargetID");
         this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
+        this.hitTypeHandle = rtiamb.getParameterHandle(hitHandle,"Type");
         rtiamb.publishInteractionClass(hitHandle);
+
+        //Subskrybcja na Cel
+        this.targetHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Target");
+        this.targetIdHandle = rtiamb.getAttributeHandle(targetHandle,"TargetID");
+        this.targetPositionHandle = rtiamb.getAttributeHandle(targetHandle,"Position");
+        attributes = rtiamb.getAttributeHandleSetFactory().create();
+        attributes.add(targetIdHandle);
+        attributes.add(targetPositionHandle);
+        rtiamb.subscribeObjectClassAttributes(targetHandle, attributes);
 
     }
 
@@ -264,7 +297,8 @@ public class EnvironmentFederate {
 //////////////////////////////
 //Faktyczne metody symulacji//
 
-    private void run(String federateName, String federationName) throws Exception {
+    private void run(String federateName, String federationName) throws Exception
+    {
         initializeFederate(federateName,federationName);
         mainLoop();
         finalizeFederate(federationName);
@@ -287,7 +321,8 @@ public class EnvironmentFederate {
         }
     }
 
-    private void setUpEnvironment() throws RTIexception {
+    private void setUpEnvironment() throws RTIexception
+    {
         temperature= 25.9;
         wind = new Vector3(0.5,0.05,0.01);
         pressure = 1020.0;
@@ -304,8 +339,6 @@ public class EnvironmentFederate {
             rtie.printStackTrace();
         }
     }
-
-
 
     private void generateTerrain() throws RTIexception
     {
@@ -392,6 +425,28 @@ public class EnvironmentFederate {
         log( "Zaktualizowano obiekt terenu na pozycji ("+x +","+y+"), handle=" + atmosphereInstance);
     }
 
+    private void sendHitInteraction(int targetID, Vector3 direction) throws RTIexception
+    {
+        bulletInTheAir=false;
+        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(3);
+        HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(targetID);
+        HLAinteger32BE typeValue = encoderFactory.createHLAinteger32BE(bulletType);
+        HLAfixedArray<HLAfloat64BE> directionValue = encoderFactory.createHLAfixedArray(wrapFloatData(direction.toFloatArray()));
+        parameters.put(hitTargetIdHandle,idValue.toByteArray());
+        parameters.put(hitDirectionHandle,directionValue.toByteArray());
+        parameters.put(hitTypeHandle,typeValue.toByteArray());
+        rtiamb.sendInteraction(hitHandle,parameters,generateTag(),timeFactory.makeTime(fedamb.federateTime+fedamb.federateLookahead));
+    }
+
+    private void updateBulletPosition(Vector3 position)
+    {
+        for(Integer id:targets.keySet())
+        {
+            if (pointAndLineDistance(bulletPosition,position,targets.get(id))<=targetHitbox)bulletCollided=true;
+        }
+    }
+
+
 
 //Pomocnicze//
     private void log( String message )
@@ -412,5 +467,11 @@ public class EnvironmentFederate {
             log( "Error while waiting for user input: " + e.getMessage() );
             e.printStackTrace();
         }
+    }
+
+    private double pointAndLineDistance(Vector3 linePointA, Vector3 linePointB, Vector3 point)
+    {
+        return linePointB.distanceFrom(linePointA).crossProduct(point.distanceFrom(linePointA)).norm()
+                /linePointB.distanceFrom(linePointA).norm();
     }
 }
