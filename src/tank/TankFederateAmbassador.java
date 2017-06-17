@@ -146,76 +146,72 @@ public class TankFederateAmbassador extends NullFederateAmbassador
                                         SupplementalReflectInfo reflectInfo )
             throws FederateInternalError
     {
-
         StringBuilder builder = new StringBuilder("Reflection for: ");
-        for( AttributeHandle attributeHandle : theAttributes.keySet() )
-        {
-            if(attributeHandle.equals(federate.shapeHandle)){
-                builder.append("Terrain: ");
+        if(theAttributes.containsKey(federate.shapeHandle)){
+            builder.append("Terrain: ");
 
-                //stworzenie factory
-                DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+            //stworzenie factory
+            DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+            {
+                public HLAfloat64BE createElement( int index )
                 {
-                    public HLAfloat64BE createElement( int index )
-                    {
-                        return federate.encoderFactory.createHLAfloat64BE();
-                    }
-                };
+                    return federate.encoderFactory.createHLAfloat64BE();
+                }
+            };
 
-                HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+            HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+            try {
+                vector.decode(theAttributes.get(federate.shapeHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+            if(federate.terrain.get((int)(position.x+0.5))==null)federate.terrain.put((int)(position.x+0.5),new HashMap<>());
+            federate.terrain.get((int)(position.x+0.5)).put((int)(position.y+0.5),position.z);
+
+            builder.append(position.toStirng());
+        } else if(theAttributes.containsKey(federate.targetIdHandle)){
+            if(!targetExists(theObject)) {
+                builder.append("New Target handle=");
+                builder.append(theObject);
+                Target target = new Target();
+
+                HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
                 try {
-                    vector.decode(theAttributes.get(federate.shapeHandle));
+                    typeData.decode(theAttributes.get(federate.targetIdHandle));
                 } catch (DecoderException e) {
                     e.printStackTrace();
                 }
-                Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-                if(federate.terrain.get((int)(position.x+0.5))==null)federate.terrain.put((int)(position.x+0.5),new HashMap<>());
-                federate.terrain.get((int)(position.x+0.5)).put((int)(position.y+0.5),position.z);
+                int id = typeData.getValue();
+                target.setId(id);
+                target.setRtiInstance(theObject);
+                federate.targets.add(target);
 
-                builder.append(position.toStirng());
-            } else if(attributeHandle.equals(federate.targetIdHandle)){
-                if(!targetExists(theObject)){
-                    builder.append("New Target handle=");
-                    builder.append(theObject);
-                    Target target = new Target();
-
-                    HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
-                    try {
-                        typeData.decode(theAttributes.get(federate.targetIdHandle));
-                    } catch (DecoderException e) {
-                        e.printStackTrace();
-                    }
-                    int id = typeData.getValue();
-                    target.setId(id);
-                    target.setRtiInstance(theObject);
-                    federate.targets.add(target);
-                }
-            }else if(attributeHandle.equals(federate.targetPositionHandle)){
                 builder.append(", modify position of Target handle=");
                 builder.append(theObject);
-                Target target = getTarget(theObject);
-
-                //stworzenie factory
-                DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
-                {
-                    public HLAfloat64BE createElement( int index )
-                    {
-                        return federate.encoderFactory.createHLAfloat64BE();
-                    }
-                };
-
-                HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
-                try {
-                    vector.decode(theAttributes.get(federate.targetPositionHandle));
-                } catch (DecoderException e) {
-                    e.printStackTrace();
-                }
-                Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-                builder.append(", position: ");
-                builder.append(position.toStirng());
-                target.setPosition(position);
             }
-        }
+            Target target = getTarget(theObject);
+
+            //stworzenie factory
+            DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+            {
+                public HLAfloat64BE createElement( int index )
+                {
+                    return federate.encoderFactory.createHLAfloat64BE();
+                }
+            };
+
+            HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+            try {
+                vector.decode(theAttributes.get(federate.targetPositionHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+            builder.append(", position: ");
+            builder.append(position.toStirng());
+            target.setPosition(position);
+            }
         log( builder.toString() );
     }
 
