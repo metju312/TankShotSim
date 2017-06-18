@@ -30,7 +30,7 @@ public class TankFederate
     public int ammo = 20;
     public final double shotChance = 0.05;
 
-    private final int reloadTime = 10;
+    private final int reloadTime = 20;
     private final double maxSpeed = 1.0;
     private final double acceleration = 0.1;
     private final double bulletSpeed = 5.0;
@@ -348,6 +348,7 @@ public class TankFederate
         ammo--;
         Vector3 dir = targets.get(chosenTarget).getPosition().distanceFrom(position);
         dir.normalize();
+        dir.z=dir.z+0.9;//TODO: ustawić kąt strzału zależny od odległości itp
         dir.timesA(bulletSpeed);
         sendShotInteraction(bulletType,dir);
     }

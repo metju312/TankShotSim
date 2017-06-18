@@ -37,6 +37,9 @@ public class BulletsFederate {
     private Vector3 bulletVelocity;
     private int bulletId = 1;
 
+    private double bulletCaliber = 125;//mm = 0.0125m
+    private double bulletMass = 6.55;//kg
+
     protected Vector3 wind;
     protected double temperature;
     protected double pressure;
@@ -253,6 +256,7 @@ public class BulletsFederate {
                 moveBullet();
                 krok++;
             }
+            else if(isRegistered)deleteBullet();
             if(krok>10)
             {
                 krok=0;
@@ -279,43 +283,58 @@ public class BulletsFederate {
         isRegistered=true;
     }
 
-    public void shotBullet(Vector3 pos, Vector3 dir, int type) throws RestoreInProgress, ObjectClassNotDefined, ObjectClassNotPublished, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected, ObjectInstanceNotKnown, AttributeNotDefined, AttributeNotOwned {
+    protected void shotBullet(Vector3 pos, Vector3 dir, int type) throws RestoreInProgress, ObjectClassNotDefined, ObjectClassNotPublished, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected, ObjectInstanceNotKnown, AttributeNotDefined, AttributeNotOwned {
         if(!bulletInTheAir)
         {
             bulletInTheAir = true;
             bulletPosition=pos;
             bulletVelocity = dir;
-            log("Wystrzelono pocisk");
+            log("Wystrzelono pocisk z pozycji "+pos.toStirng()+" w kierunku "+ dir.toStirng());
         }
     }
 
     private void updateBulletPosition() throws NotConnected, FederateNotExecutionMember, ObjectInstanceNotKnown, RestoreInProgress, AttributeNotOwned, AttributeNotDefined, SaveInProgress, RTIinternalError {
-        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(1);
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(2);
         HLAfixedArray<HLAfloat64BE> bulletPositionValue = encoderFactory.createHLAfixedArray(wrapFloatData(bulletPosition.toFloatArray()));
+        HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(bulletId);
+        attributes.put(bulletIdHandle,idValue.toByteArray());
         attributes.put(bulletPositionHandle,bulletPositionValue.toByteArray());
         rtiamb.updateAttributeValues(bulletInstanceHandle,attributes,generateTag());
         log( "Zaktualizowano pozycje obiektu pocisku, handle=" + bulletInstanceHandle );
     }
 
-    private void moveBullet() throws ObjectInstanceNotKnown, RestoreInProgress, AttributeNotOwned, AttributeNotDefined, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
+    private void moveBullet() throws ObjectInstanceNotKnown, RestoreInProgress, AttributeNotOwned, AttributeNotDefined, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected
+    {
+        bulletVelocity.addVector(new Vector3(0.0,0.0,-0.980665));//0.98 oznacza że jedna jednostka odległości to 10 metrów, a jedna jednostka czasu to 1 s.
+        Vector3 dragAcceleration = new Vector3(-bulletVelocity.x,-bulletVelocity.y,-bulletVelocity.z);
+        dragAcceleration.normalize();
+        dragAcceleration.timesA(calculateDragForce()/bulletMass);
+        bulletVelocity.addVector(dragAcceleration);
         bulletPosition.addVector(bulletVelocity);
         updateBulletPosition();
-        log("pocisk poruszył sie na pozycje "+ bulletPosition.toStirng());
+        log("pocisk poruszył sie na pozycje "+ bulletPosition.toStirng()+" z prędkością = "+bulletVelocity.norm());
     }
 
-    private void destroyBullet() throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
+    public void destroyBullet()
+    {
+        bulletInTheAir=false;
+    }
+
+    private void deleteBullet() throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
         rtiamb.deleteObjectInstance( bulletInstanceHandle, generateTag() );
         isRegistered=false;
-        bulletInTheAir=false;
         bulletId++;
         log("pocisk zakończył swój lot");
     }
 
-    protected void setAtmosphereValues(Vector3 wind, double pressure,double temperature)
+    private double calculateDragForce()
     {
-        this.wind=wind;
-        this.pressure=pressure;
-        this.temperature = temperature;
+        double speedSquare = bulletVelocity.norm();
+        speedSquare*=speedSquare;
+        double density = 100*pressure/(287.05*(temperature+273.15));
+        double area = Math.PI*bulletCaliber*bulletCaliber/400000000;
+        double dragCoefficient = 0.295;
+        return 0.5*density*speedSquare*area*dragCoefficient;
     }
 
     public static void main(String[] args) {

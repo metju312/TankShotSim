@@ -84,10 +84,12 @@ public class EnvironmentFederate {
 
     private boolean bulletInTheAir = false;
     private boolean bulletCollided = false;
-    private Vector3 bulletPosition;
-    private Vector3 bulletVelocity;
-    private int bulletType;
-    private int bulletId = 1;
+
+    protected Vector3 bulletPosition;
+    protected Vector3 hitDirection;
+    protected int hitTarget;
+    protected int bulletType;
+    protected int bulletId = 1;
     protected ObjectInstanceHandle bulletInstance;
 
     protected ObjectInstanceHandle atmosphereInstance;
@@ -312,6 +314,7 @@ public class EnvironmentFederate {
         {
             forecast();
 
+            if(bulletCollided)sendHitInteraction(hitTarget,hitDirection);
             advanceTime( 1.0 );
             log( "Time Advanced to " + fedamb.federateTime );
             try {
@@ -443,6 +446,8 @@ public class EnvironmentFederate {
     private void sendHitInteraction(int targetID, Vector3 direction) throws RTIexception
     {
         bulletInTheAir=false;
+        bulletCollided=false;
+        bulletPosition=null;
         ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(3);
         HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(targetID);
         HLAinteger32BE typeValue = encoderFactory.createHLAinteger32BE(bulletType);
@@ -453,11 +458,20 @@ public class EnvironmentFederate {
         rtiamb.sendInteraction(hitHandle,parameters,generateTag(),timeFactory.makeTime(fedamb.federateTime+fedamb.federateLookahead));
     }
 
-    private void updateBulletPosition(Vector3 position)
+    protected void updateBulletPosition(Vector3 position)
     {
         for (Target target : targets) {
-            if (pointAndLineDistance(bulletPosition,position,target.getPosition())<=targetHitbox)bulletCollided=true;
+            if (pointAndLineDistance(bulletPosition,position,target.getPosition())<=targetHitbox)
+            {
+                bulletCollided=true;
+                hitTarget=target.getId();
+                position.subtractVector(bulletPosition);
+                hitDirection=bulletPosition;
+                break;
+            }
         }
+        //TODO: sprawdzenie czy trafił w ziemię
+        if(!bulletCollided)bulletPosition=position;
     }
 
 

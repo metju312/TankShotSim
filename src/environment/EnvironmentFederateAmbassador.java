@@ -186,7 +186,8 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
                 e.printStackTrace();
             }
             Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-
+            if(federate.bulletPosition==null)federate.bulletPosition=position;
+            else federate.updateBulletPosition(position);
             builder.append(position.toStirng());
 
         }else if (theAttributes.containsKey(federate.targetIdHandle)) {

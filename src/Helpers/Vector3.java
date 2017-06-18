@@ -33,6 +33,13 @@ public class Vector3
         z+=b.z;
     }
 
+    public void subtractVector(Vector3 b)
+    {
+        x-=b.x;
+        y-=b.y;
+        z-=b.z;
+    }
+
     public void timesA(double a)
     {
         x*=a;

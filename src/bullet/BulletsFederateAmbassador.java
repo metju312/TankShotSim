@@ -120,7 +120,7 @@ public class BulletsFederateAmbassador extends NullFederateAmbassador {
                 Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
 
                 builder.append(position.toStirng());
-
+                federate.wind=position;
 
             } else if(attributeHandle.equals(federate.temperatureHandle)){
                 builder.append( " Temperature=" );
@@ -232,6 +232,9 @@ public class BulletsFederateAmbassador extends NullFederateAmbassador {
             } catch (RTIexception restoreInProgress) {
                 restoreInProgress.printStackTrace();
             }
+        }else if(interactionClass.equals(federate.hitHandle))
+        {
+            federate.destroyBullet();
         }
 
         log( builder.toString() );
