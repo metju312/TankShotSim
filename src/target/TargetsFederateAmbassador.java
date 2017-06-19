@@ -6,6 +6,9 @@ import hla.rti1516e.*;
 import hla.rti1516e.encoding.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
+
+import java.util.HashMap;
+
 public class TargetsFederateAmbassador extends NullFederateAmbassador {
 
     private TargetsFederate federate;
@@ -120,7 +123,9 @@ public class TargetsFederateAmbassador extends NullFederateAmbassador {
                     e.printStackTrace();
                 }
                 Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-                federate.terrain.add(position);
+                if(federate.terrain.get((int)(position.x+0.5))==null)federate.terrain.put((int)(position.x+0.5),new HashMap<>());
+                federate.terrain.get((int)(position.x+0.5)).put((int)(position.y+0.5),position.z);
+
 
                 builder.append(position.toStirng());
             }

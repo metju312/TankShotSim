@@ -10,16 +10,13 @@ import hla.rti1516e.exceptions.*;
 import hla.rti1516e.time.HLAfloat64Interval;
 import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
-import statistic.*;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class TargetsFederate {
 
@@ -36,8 +33,11 @@ public class TargetsFederate {
 
     private int maxTargetId=0;
 
+
     protected List<Target> targets = new ArrayList<>();
-    protected List<Vector3> terrain = new ArrayList<>();
+    protected List<Vector3> positionsToAchieve = new ArrayList<>();
+    protected double positionToAchieveHitbox = 2;
+    protected Map<Integer,Map<Integer,Double>> terrain;
 
     protected InteractionClassHandle hitHandle;
     protected ParameterHandle hitTargetIdHandle;
@@ -50,6 +50,9 @@ public class TargetsFederate {
 
     protected ObjectClassHandle terrainHandle;
     protected AttributeHandle shapeHandle;
+
+    private boolean shouldGeneratePointsToAchieve = true;
+    private boolean terrainExists = false;
 
     // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
@@ -211,24 +214,38 @@ public class TargetsFederate {
 
     private void run(String federateName, String federationName) throws Exception {
         initializeFederate(federateName,federationName);
+        terrain = new HashMap<>();
         mainLoop();
         finalizeFederate(federationName);
     }
 
     private void mainLoop() throws RTIexception, InterruptedException{
         Random generator = new Random();
-        generateTarget();
+        //generateTarget();
         while (fedamb.running)
         {
-            if(generator.nextDouble() < generateTargetChance){
-                generateTarget();
+            if(terrainExists){
+                //if(generator.nextDouble() < generateTargetChance){
+                    //generateTarget();
+                //}
             }
+
             advanceTime( 1.0 );
             log( "Time Advanced to " + fedamb.federateTime);
 
+            if(terrain.size() != 0){
+                terrainExists = true;
+            }
+            if(terrainExists){
+                if(shouldGeneratePointsToAchieve){
+                    initializePositionsToAchieve();
+                    generateTarget();
+                    shouldGeneratePointsToAchieve = false;
+                }
+            }
+
             for (Target target:targets)
             {
-
                 moveTarget(target);
             }
 
@@ -240,14 +257,126 @@ public class TargetsFederate {
         }
     }
 
-    private void moveTarget(Target target)
-    {
+    protected void initializePositionsToAchieve() {
+        //półkole
+        int x = 16;
+        int y = -17;
+        positionsToAchieve.add(new Vector3(x,y,getZ(x,y)));
+        x = 4;
+        y = -9;
+        positionsToAchieve.add(new Vector3(x,y,getZ(x,y)));
+        x = 1;
+        y = 2;
+        positionsToAchieve.add(new Vector3(x,y,getZ(x,y)));
+        x = 4;
+        y = 9;
+        positionsToAchieve.add(new Vector3(x,y,getZ(x,y)));
+        x = 16;
+        y = 17;
+        positionsToAchieve.add(new Vector3(x,y,getZ(x,y)));
+    }
 
+    private void moveTarget(Target target) throws RTIexception {
+        definePositionToAchieve(target);
+        Vector3 dir = target.getPositionToAchieve().distanceFrom(target.getPosition());
+        dir.normalize();
+        double speedNorm= target.getSpeed().dotProduct(dir);
+        if(speedNorm<0.0)speedNorm=0.0;
+        if(speedNorm<target.getMaxSpeed())dir.timesA(target.getAcceleration()+speedNorm);
+        else dir.timesA(speedNorm);
+        target.getPosition().addVector(dir);
+        target.getPosition().z=getZ(target.getPosition().x,target.getPosition().y)+1;
+        target.setSpeed(dir);
+        updateTargetObject(target);
+        log("Cel: " + target.getId() + " poruszył się na pozycję : "+target.getPosition().toStirng()+" z prędkością : "+target.getSpeed().norm()+" / "+target.getSpeed().toStirng());
+    }
+
+    private void definePositionToAchieve(Target target) {
+        if(target.getPositionToAchieve() == null){
+            target.setPositionToAchieve(positionsToAchieve.get(0));
+        }else if(achieved(target, positionsToAchieve.get(positionsToAchieve.size()-1))){ //osiągnięto ostatni
+            log("Cel: " + target.getId() + " uciekł!");
+            //TODO destroy
+        }else{ // wybór następnego punktu
+            for (int i = 0; i < positionsToAchieve.size(); i++) {
+                if(target.getPositionToAchieve().equals(positionsToAchieve.get(i))){ // znajdź dokładnie taki sam punkt na liście Achieve
+                    if(achieved(target, positionsToAchieve.get(i))){ //jeśli go osiągnięto
+                        target.setPositionToAchieve(positionsToAchieve.get(i+1));
+                        log("Cel: " + target.getId() + " zwrot w  kierunku: " + target.getPositionToAchieve().toStirng());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean achieved(Target target, Vector3 checkingPosition) {
+        if(pointAndLineDistance(target.getPosition(),target.getSpeed(),checkingPosition)<= positionToAchieveHitbox){
+            return true;
+        }
+        return false;
+    }
+
+    private double getZ(int x, int y)
+    {
+        Map<Integer, Double> mapAtX = terrain.get(x);
+        Double valueAtY;
+        if(mapAtX==null)return 0.0;
+        else valueAtY = mapAtX.get(y);
+        if(valueAtY==null)return 0.0;
+        else return valueAtY;
+    }
+
+    private double getZ(double x, double y)
+    {
+        int leftDownX, leftDownY;
+        double leftDownDistance, leftUpDistance, rightUpDistance, rightDownDistance, sum;
+        double leftDownZ, leftUpZ, rightUpZ, rightDownZ;
+        leftDownX = (int)x;
+        leftDownY = (int)y;
+        leftDownZ = getZ(leftDownX,leftDownY);
+        leftUpZ = getZ(leftDownX,leftDownY+1);
+        rightDownZ = getZ(leftDownX+1,leftDownY);
+        rightUpZ = getZ(leftDownX+1,leftDownY+1);
+        leftDownDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(y-leftDownY,2));
+        leftUpDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(leftDownY+1-y,2));
+        rightUpDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(leftDownY+1-y,2));
+        rightDownDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(y-leftDownY,2));
+        double z=Math.min(Math.min(leftDownZ,leftUpZ),Math.min(rightDownZ,rightUpZ));
+        leftDownZ -= z;
+        leftUpZ -= z;
+        rightDownZ -= z;
+        rightUpZ -= z;
+        leftDownDistance = 1-leftDownDistance;
+        leftUpDistance = 1-leftUpDistance;
+        rightDownDistance = 1-rightDownDistance;
+        rightUpDistance = 1-rightUpDistance;
+        if(leftDownDistance<0)leftDownDistance=0;
+        if(leftUpDistance<0)leftUpDistance=0;
+        if(rightDownDistance<0)rightDownDistance=0;
+        if(rightUpDistance<0)rightUpDistance=0;
+        sum= leftDownDistance+leftUpDistance+rightDownDistance+rightUpDistance;
+        leftDownDistance = leftDownDistance/sum;
+        leftUpDistance = leftUpDistance/sum;
+        rightDownDistance = rightDownDistance/sum;
+        rightUpDistance = rightUpDistance/sum;
+        z += leftDownZ*leftDownDistance+
+                leftUpZ*leftUpDistance+
+                rightDownZ*rightDownDistance+
+                rightUpZ*rightUpDistance;
+        return z;
     }
 
     private void generateTarget() throws SaveInProgress, AttributeNotDefined, ObjectInstanceNotKnown, RestoreInProgress, NotConnected, ObjectClassNotDefined, InvalidLogicalTime, AttributeNotOwned, FederateNotExecutionMember, RTIinternalError, ObjectClassNotPublished {
         Random generator = new Random();
         int type = generator.nextInt(5);
+
+        //zawsze generuj czołg - //TODO potem to usunąć i generować czołgi o różnych typach
+        Target target = new Target(++maxTargetId,new Vector3(18.0,-18.0,0.0));
+        targets.add(target);
+        registerTargetObject(target);
+        log("Stworzono cel o id: "+maxTargetId);
+
         switch (type)
         {
             case 0:
@@ -261,10 +390,10 @@ public class TargetsFederate {
             case 4:
                 //break;
             case 5:
-                Target target = new Target(++maxTargetId,new Vector3(2.0,5.0,0.0));
-                targets.add(target);
-                registerTargetObject(target);
-                log("Stworzono cel o id: "+maxTargetId);
+//                Target target = new Target(++maxTargetId,new Vector3(5.0,-5.0,0.0));
+//                targets.add(target);
+//                registerTargetObject(target);
+//                log("Stworzono cel o id: "+maxTargetId);
                 break;
         }
     }
@@ -282,6 +411,21 @@ public class TargetsFederate {
                 timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
         targetObject.isRegistered=true;
         log( "Dodano obiekt celu, handle=" + targetObject.getRtiInstance());
+    }
+
+    private void updateTargetObject(Target targetObject) throws RTIexception
+    {
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(2);
+        HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(targetObject.getId());
+        HLAfixedArray<HLAfloat64BE> positionValue = encoderFactory.createHLAfixedArray(wrapFloatData(targetObject.getPosition().toFloatArray()));
+        attributes.put(targetIdHandle,idValue.toByteArray());
+        attributes.put(targetPositionHandle,positionValue.toByteArray());
+        rtiamb.updateAttributeValues(targetObject.getRtiInstance(),
+                attributes,
+                generateTag(),
+                timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
+        targetObject.isRegistered=true;
+        //log( "Zmodyfikowano pozycję celu, handle=" + targetObject.getRtiInstance());
     }
 
     public static void main(String[] args) {
@@ -318,6 +462,12 @@ public class TargetsFederate {
 
     private void sleep(int time) throws InterruptedException {
         Thread.sleep(time);
+    }
+
+    private double pointAndLineDistance(Vector3 linePointA, Vector3 linePointB, Vector3 point)
+    {
+        return linePointB.distanceFrom(linePointA).crossProduct(point.distanceFrom(linePointA)).norm()
+                /linePointB.distanceFrom(linePointA).norm();
     }
 }
 
