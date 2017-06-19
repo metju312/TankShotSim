@@ -7,6 +7,9 @@ import hla.rti1516e.encoding.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.exceptions.RTIexception;
 import hla.rti1516e.time.HLAfloat64Time;
+import target.Target;
+
+import java.util.HashMap;
 
 public class StatisticFederateAmbassador extends NullFederateAmbassador {
 
@@ -86,6 +89,81 @@ public class StatisticFederateAmbassador extends NullFederateAmbassador {
         this.isAdvancing = false;
     }
 
+    @Override
+    public void reflectAttributeValues( ObjectInstanceHandle theObject,
+                                        AttributeHandleValueMap theAttributes,
+                                        byte[] tag,
+                                        OrderType sentOrdering,
+                                        TransportationTypeHandle theTransport,
+                                        LogicalTime time,
+                                        OrderType receivedOrdering,
+                                        SupplementalReflectInfo reflectInfo )
+            throws FederateInternalError
+    {
+        StringBuilder builder = new StringBuilder("Reflection for: ");
+        if(theAttributes.containsKey(federate.targetIdHandle)){
+            if(!targetExists(theObject)) {
+                builder.append("New Target handle=");
+                builder.append(theObject);
+                Target target = new Target();
+
+                HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
+                try {
+                    typeData.decode(theAttributes.get(federate.targetIdHandle));
+                } catch (DecoderException e) {
+                    e.printStackTrace();
+                }
+                int id = typeData.getValue();
+                target.setId(id);
+                target.setRtiInstance(theObject);
+                federate.targets.add(target);
+
+                builder.append(", modify position of Target handle=");
+                builder.append(theObject);
+            }
+            Target target = getTarget(theObject);
+
+            //stworzenie factory
+            DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
+            {
+                public HLAfloat64BE createElement( int index )
+                {
+                    return federate.encoderFactory.createHLAfloat64BE();
+                }
+            };
+
+            HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
+            try {
+                vector.decode(theAttributes.get(federate.targetPositionHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
+            builder.append(", position: ");
+            builder.append(position.toStirng());
+            target.setPosition(position);
+        }
+        log( builder.toString() );
+    }
+
+    private boolean targetExists(ObjectInstanceHandle theObject) {
+        for (Target target : federate.targets) {
+            if(target.getRtiInstance().equals(theObject)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Target getTarget(ObjectInstanceHandle theObject){
+        for (Target target : federate.targets) {
+            if(target.getRtiInstance().equals(theObject)){
+                return target;
+            }
+        }
+        return null;
+    }
+
 
     public void receiveInteraction( InteractionClassHandle interactionClass,
                                     ParameterHandleValueMap theParameters,
@@ -132,46 +210,6 @@ public class StatisticFederateAmbassador extends NullFederateAmbassador {
             builder.append( " Czołg trafił ! " );
             federate.hitCount++;
             federate.logStatistics();
-//
-//            DataElementFactory<HLAfloat64BE> factory = new DataElementFactory<HLAfloat64BE>()
-//            {
-//                public HLAfloat64BE createElement( int index )
-//                {
-//                    return federate.encoderFactory.createHLAfloat64BE();
-//                }
-//            };
-//
-//            HLAfixedArray<HLAfloat64BE> vector = federate.encoderFactory.createHLAfixedArray( factory, 3 );
-//            try {
-//                vector.decode(theParameters.get(federate.shotPositionHandle));
-//            } catch (DecoderException e) {
-//                e.printStackTrace();
-//            }
-//            Vector3 position = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-//
-//
-//            try {
-//                vector.decode(theParameters.get(federate.directionHandle));
-//            } catch (DecoderException e) {
-//                e.printStackTrace();
-//            }
-//            Vector3 direction = new Vector3(vector.get(0).getValue(), vector.get(1).getValue(),vector.get(2).getValue());
-//
-//
-//            HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
-//            try {
-//                typeData.decode(theParameters.get(federate.typeHandle));
-//            } catch (DecoderException e) {
-//                e.printStackTrace();
-//            }
-//
-//            int type = typeData.getValue();
-//
-//            try {
-//                federate.shotBullet(position,direction,type);
-//            } catch (RTIexception restoreInProgress) {
-//                restoreInProgress.printStackTrace();
-//            }
         }
 
         log( builder.toString() );
