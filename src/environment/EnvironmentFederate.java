@@ -502,4 +502,45 @@ public class EnvironmentFederate {
         return linePointB.distanceFrom(linePointA).crossProduct(point.distanceFrom(linePointA)).norm()
                 /linePointB.distanceFrom(linePointA).norm();
     }
+
+
+    private double getZ(double x, double y)
+    {
+        int leftDownX, leftDownY;
+        double leftDownDistance, leftUpDistance, rightUpDistance, rightDownDistance, sum;
+        double leftDownZ, leftUpZ, rightUpZ, rightDownZ;
+        leftDownX = (int)x;
+        leftDownY = (int)y;
+        leftDownZ = terrain[leftDownX][leftDownY].z;
+        leftUpZ = terrain[leftDownX][leftDownY+1].z;
+        rightDownZ = terrain[leftDownX+1][leftDownY].z;
+        rightUpZ = terrain[leftDownX+1][leftDownY+1].z;
+        leftDownDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(y-leftDownY,2));
+        leftUpDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(leftDownY+1-y,2));
+        rightUpDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(leftDownY+1-y,2));
+        rightDownDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(y-leftDownY,2));
+        double z=Math.min(Math.min(leftDownZ,leftUpZ),Math.min(rightDownZ,rightUpZ));
+        leftDownZ -= z;
+        leftUpZ -= z;
+        rightDownZ -= z;
+        rightUpZ -= z;
+        leftDownDistance = 1-leftDownDistance;
+        leftUpDistance = 1-leftUpDistance;
+        rightDownDistance = 1-rightDownDistance;
+        rightUpDistance = 1-rightUpDistance;
+        if(leftDownDistance<0)leftDownDistance=0;
+        if(leftUpDistance<0)leftUpDistance=0;
+        if(rightDownDistance<0)rightDownDistance=0;
+        if(rightUpDistance<0)rightUpDistance=0;
+        sum= leftDownDistance+leftUpDistance+rightDownDistance+rightUpDistance;
+        leftDownDistance = leftDownDistance/sum;
+        leftUpDistance = leftUpDistance/sum;
+        rightDownDistance = rightDownDistance/sum;
+        rightUpDistance = rightUpDistance/sum;
+        z += leftDownZ*leftDownDistance+
+                leftUpZ*leftUpDistance+
+                rightDownZ*rightDownDistance+
+                rightUpZ*rightUpDistance;
+        return z;
+    }
 }
