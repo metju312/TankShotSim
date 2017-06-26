@@ -241,6 +241,17 @@ public class TankFederateAmbassador extends NullFederateAmbassador
             throws FederateInternalError
     {
         log( "Object Removed: handle=" + theObject );
+        Target struckTarget=null;
+        for (Target target : federate.targets) {
+            if(target.getRtiInstance().equals(theObject)){
+                struckTarget=target;
+            }
+        }
+        if(struckTarget!=null)
+        {
+            federate.chosenTarget=-1;
+            federate.targets.remove(struckTarget);
+        }
     }
 
     }
