@@ -14,7 +14,7 @@ public class Target {
     private Vector3 speed = new Vector3(0,0,0);
     public boolean isRegistered=false;
 
-    private double maxSpeed = 0.7;
+    private double maxSpeed = 1.2;
     private double acceleration = 0.1;
 
     public Target() {

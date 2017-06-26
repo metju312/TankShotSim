@@ -83,7 +83,7 @@ public class EnvironmentFederate {
     protected Map<ObjectInstanceHandle,Integer> targetsInstances;
 
     private boolean bulletInTheAir = false;
-    private boolean bulletCollided = false;
+    protected boolean bulletCollided = false;
 
     protected Vector3 bulletPosition;
     protected Vector3 hitDirection;
@@ -110,6 +110,7 @@ public class EnvironmentFederate {
     //private Map<ObjectInstanceHandle, Double> terrain;
 
     private Shape[][] terrain;
+
     //private double[][] terrain;
 
     private Vector3 wind;
@@ -314,7 +315,11 @@ public class EnvironmentFederate {
         {
             forecast();
 
-            if(bulletCollided)sendHitInteraction(hitTarget,hitDirection);
+            if(bulletCollided)
+            {
+                if(bulletPosition!=null)sendHitInteraction(hitTarget, hitDirection);
+                else bulletCollided=false;
+            }
             advanceTime( 1.0 );
             log( "Time Advanced to " + fedamb.federateTime );
             try {
@@ -445,9 +450,6 @@ public class EnvironmentFederate {
 
     private void sendHitInteraction(int targetID, Vector3 direction) throws RTIexception
     {
-        bulletInTheAir=false;
-        bulletCollided=false;
-        bulletPosition=null;
         ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(3);
         HLAinteger32BE idValue = encoderFactory.createHLAinteger32BE(targetID);
         HLAinteger32BE typeValue = encoderFactory.createHLAinteger32BE(bulletType);
@@ -456,21 +458,34 @@ public class EnvironmentFederate {
         parameters.put(hitDirectionHandle,directionValue.toByteArray());
         parameters.put(hitTypeHandle,typeValue.toByteArray());
         rtiamb.sendInteraction(hitHandle,parameters,generateTag(),timeFactory.makeTime(fedamb.federateTime+fedamb.federateLookahead));
+        bulletInTheAir=false;
+        bulletPosition=null;
+        log("wysłano interakcje trafienia");
     }
 
     protected void updateBulletPosition(Vector3 position)
     {
-        for (Target target : targets) {
+        log("Ruch pocisku z "+bulletPosition.toStirng()+" do "+ position.toStirng());
+        for (Target target : targets)
             if (pointAndLineDistance(bulletPosition,position,target.getPosition())<=targetHitbox)
             {
                 bulletCollided=true;
                 hitTarget=target.getId();
                 position.subtractVector(bulletPosition);
                 hitDirection=bulletPosition;
+                log("Pocisk trafił w cel");
                 break;
             }
+
+
+        if(!bulletCollided)if(checkHeight(bulletPosition,position))
+        {
+            bulletCollided = true;
+            hitTarget = -1;
+            position.subtractVector(bulletPosition);
+            hitDirection = bulletPosition;
+            log("Pocisk trafił w ziemię");
         }
-        //TODO: sprawdzenie czy trafił w ziemię
         if(!bulletCollided)bulletPosition=position;
     }
 
@@ -500,9 +515,79 @@ public class EnvironmentFederate {
     private double pointAndLineDistance(Vector3 linePointA, Vector3 linePointB, Vector3 point)
     {
         return linePointB.distanceFrom(linePointA).crossProduct(point.distanceFrom(linePointA)).norm()
-                /linePointB.distanceFrom(linePointA).norm();
+                / linePointB.distanceFrom(linePointA).norm();
     }
 
+    private boolean checkHeight(Vector3 linePointA, Vector3 linePointB)
+    {
+        int i = (int) linePointA.x;
+        int j = (int) linePointA.y;
+        int n = (int) linePointB.x;
+        int m = (int) linePointB.y;
+        Vector3 vector = linePointB.distanceFrom(linePointA);
+        double x;
+        double y;
+        double z;
+        double aWeight;
+        if(i<n)
+        {
+            i++;
+            for (; i <= n; i++)
+            {
+                aWeight = (i-linePointA.x) / vector.x;
+                y = linePointA.y * aWeight + linePointB.y * (1 - aWeight);
+                z = linePointA.z * aWeight + linePointB.z * (1 - aWeight);
+                //log("posisk "+(z-getZ(i,y))+" nad ziemią");
+                if (z < getZ(i, y)) return true;
+            }
+        }
+        else
+        {
+            n++;
+            for (; i >= n; i--)
+            {
+                aWeight = (linePointA.x - i) / vector.x;
+                y = linePointA.y * aWeight + linePointB.y * (1 - aWeight);
+                z = linePointA.z * aWeight + linePointB.z * (1 - aWeight);
+                //log("posisk "+(z-getZ(i,y))+" nad ziemią");
+                if (z < getZ(i, y)) return true;
+            }
+        }
+        if(j<m)
+        {
+            j++;
+            for(;j<=m;j++)
+            {
+                aWeight = (j-linePointA.y)/vector.y;
+                x = linePointA.x * aWeight + linePointB.x * (1 - aWeight);
+                z = linePointA.z * aWeight + linePointB.z * (1 - aWeight);
+                //log("posisk "+(z-getZ(x,j))+" nad ziemią");
+                if (z < getZ(x, j)) return true;
+            }
+        }
+        else
+        {
+            m++;
+            for(;j>=m;j--)
+            {
+                aWeight = (j-linePointA.y)/vector.y;
+                x = linePointA.x * aWeight + linePointB.x * (1 - aWeight);
+                z = linePointA.z * aWeight + linePointB.z * (1 - aWeight);
+                //log("posisk "+(z-getZ(x,j))+" nad ziemią");
+                if (z < getZ(x, j)) return true;
+            }
+        }
+        if(linePointB.z<getZ(linePointB.x,linePointB.y)) return true;
+        return false;
+    }
+
+    private double getZ(int x,int y)
+    {
+        if(x<0||y<0||x>terrain.length-1||y>terrain.length-1)return 0.0;
+        Shape pos = terrain[x][y];
+        if(pos!=null)return pos.z;
+        else return 0.0;
+    }
 
     private double getZ(double x, double y)
     {
@@ -511,10 +596,10 @@ public class EnvironmentFederate {
         double leftDownZ, leftUpZ, rightUpZ, rightDownZ;
         leftDownX = (int)x;
         leftDownY = (int)y;
-        leftDownZ = terrain[leftDownX][leftDownY].z;
-        leftUpZ = terrain[leftDownX][leftDownY+1].z;
-        rightDownZ = terrain[leftDownX+1][leftDownY].z;
-        rightUpZ = terrain[leftDownX+1][leftDownY+1].z;
+        leftDownZ = getZ(leftDownX,leftDownY);
+        leftUpZ = getZ(leftDownX,leftDownY+1);
+        rightDownZ = getZ(leftDownX+1,leftDownY);
+        rightUpZ = getZ(leftDownX+1,leftDownY+1);
         leftDownDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(y-leftDownY,2));
         leftUpDistance = Math.sqrt(Math.pow(x-leftDownX,2)+Math.pow(leftDownY+1-y,2));
         rightUpDistance = Math.sqrt(Math.pow(leftDownX+1-x,2)+Math.pow(leftDownY+1-y,2));
@@ -543,4 +628,5 @@ public class EnvironmentFederate {
                 rightUpZ*rightUpDistance;
         return z;
     }
+
 }

@@ -329,7 +329,7 @@ public class BulletsFederate {
 
     private double calculateDragForce()
     {
-        double speedSquare = bulletVelocity.norm();
+        double speedSquare = bulletVelocity.distanceFrom(wind).norm();
         speedSquare*=speedSquare;
         double density = 100*pressure/(287.05*(temperature+273.15));
         double area = Math.PI*bulletCaliber*bulletCaliber/400000000;

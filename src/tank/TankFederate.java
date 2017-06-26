@@ -32,7 +32,7 @@ public class TankFederate
 
     private final int reloadTime = 20;
     private final double maxSpeed = 1.0;
-    private final double acceleration = 0.1;
+    private final double acceleration = 0.05;
     private final double bulletSpeed = 5.0;
 
     public Vector3 position= new Vector3(14.0,2.0, 1.0) ;
