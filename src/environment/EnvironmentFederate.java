@@ -47,7 +47,7 @@ public class EnvironmentFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
 
-    private final double targetHitbox = 5.0;
+    private final double targetHitbox = 1.0;
 
     private RTIambassador rtiamb;
     private EnvironmentFederateAmbassador fedamb;
@@ -95,7 +95,6 @@ public class EnvironmentFederate {
     protected ObjectInstanceHandle atmosphereInstance;
 
 
-    //TODO:Jak zrealizować przechowywanie hanlderów na instancje?
     public class Shape
     {
         public double z;
