@@ -41,7 +41,7 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
     protected int finishHandle           = 0;
     protected int bulletHandle = 0;
 
-    protected ArrayList<ExternalEvent> externalEvents = new ArrayList<>();
+    //protected ArrayList<ExternalEvent> externalEvents = new ArrayList<>();
 
     public EnvironmentFederateAmbassador(EnvironmentFederate federate) {
         this.federate = federate;
@@ -338,7 +338,6 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
 //        log( builder.toString() );
 //    }
 
-    @Override
     public void removeObjectInstance( ObjectInstanceHandle theObject,
                                       byte[] tag,
                                       OrderType sentOrdering,
@@ -346,6 +345,13 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
             throws FederateInternalError
     {
         log( "Object Removed: handle=" + theObject );
+        Target struckTarget=null;
+        for (Target target : federate.targets) {
+            if(target.getRtiInstance().equals(theObject)){
+                struckTarget=target;
+            }
+        }
+        if(struckTarget!=null)federate.targets.remove(struckTarget);
     }
 
 }

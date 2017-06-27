@@ -57,6 +57,8 @@ public class TargetsFederate {
     private boolean shouldGeneratePointsToAchieve = true;
     private boolean terrainExists = false;
 
+    private Target struckTarget=null;
+
     // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
         log("Tworzenie abasadorów i połączenia");
@@ -253,6 +255,10 @@ public class TargetsFederate {
                 }
             }
 
+            if(struckTarget!=null)
+            {
+                removeTargetObject();
+            }
             for (Target target:targets)
             {
                 moveTarget(target);
@@ -377,6 +383,22 @@ public class TargetsFederate {
         return z;
     }
 
+    protected void damageTarget(int id, int type, Vector3 dir)
+    {
+        log("pocisk trafił w cell o id = "+id);
+        struckTarget=null;
+        for(Target target:targets)
+        {
+            if(target.getId()==id)struckTarget=target;
+        }
+        if(struckTarget!=null)
+        {
+            log("znalezione ten cel, usuwamy");
+            //Magia, obliczanie obrarzeń itp. póki co trafiony-zatopiony
+            targets.remove(struckTarget);
+        }
+    }
+
     private void generateTarget() throws SaveInProgress, AttributeNotDefined, ObjectInstanceNotKnown, RestoreInProgress, NotConnected, ObjectClassNotDefined, InvalidLogicalTime, AttributeNotOwned, FederateNotExecutionMember, RTIinternalError, ObjectClassNotPublished {
         Random generator = new Random();
         int type = generator.nextInt(5);
@@ -436,6 +458,11 @@ public class TargetsFederate {
                 timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead ));
         targetObject.isRegistered=true;
         //log( "Zmodyfikowano pozycję celu, handle=" + targetObject.getRtiInstance());
+    }
+
+    private void removeTargetObject() throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
+        rtiamb.deleteObjectInstance(struckTarget.getRtiInstance(),generateTag());
+        struckTarget=null;
     }
 
     public static void main(String[] args) {
