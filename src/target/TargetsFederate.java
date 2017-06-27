@@ -29,7 +29,7 @@ public class TargetsFederate {
     private HLAfloat64TimeFactory timeFactory; // set when we join
     protected EncoderFactory encoderFactory;
 
-    public final double generateTargetChance = 0.1;
+    public final double generateTargetChance = 0.051;
 
     private int maxTargetId=0;
 
@@ -253,11 +253,12 @@ public class TargetsFederate {
                     generateTarget();
                     shouldGeneratePointsToAchieve = false;
                 }
+                if(generator.nextDouble()<generateTargetChance)generateTarget();
             }
 
             if(struckTarget!=null)
             {
-                removeTargetObject();
+                removeTargetObject(struckTarget);
             }
             for (Target target:targets)
             {
@@ -307,12 +308,13 @@ public class TargetsFederate {
         log("Cel: " + target.getId() + " poruszył się na pozycję : "+target.getPosition().toStirng()+" z prędkością : "+target.getSpeed().norm()+" / "+target.getSpeed().toStirng());
     }
 
-    private void definePositionToAchieve(Target target) {
+    private void definePositionToAchieve(Target target)throws RTIexception
+    {
         if(target.getPositionToAchieve() == null){
             target.setPositionToAchieve(positionsToAchieve.get(0));
         }else if(achieved(target, positionsToAchieve.get(positionsToAchieve.size()-1))){ //osiągnięto ostatni
             log("Cel: " + target.getId() + " uciekł!");
-            //TODO destroy
+            struckTarget=target;
         }else{ // wybór następnego punktu
             for (int i = 0; i < positionsToAchieve.size(); i++) {
                 if(target.getPositionToAchieve().equals(positionsToAchieve.get(i))){ // znajdź dokładnie taki sam punkt na liście Achieve
@@ -386,7 +388,7 @@ public class TargetsFederate {
     protected void damageTarget(int id, int type, Vector3 dir)
     {
         log("pocisk trafił w cell o id = "+id);
-        struckTarget=null;
+
         for(Target target:targets)
         {
             if(target.getId()==id)struckTarget=target;
@@ -395,7 +397,7 @@ public class TargetsFederate {
         {
             log("znalezione ten cel, usuwamy");
             //Magia, obliczanie obrarzeń itp. póki co trafiony-zatopiony
-            targets.remove(struckTarget);
+
         }
     }
 
@@ -460,8 +462,9 @@ public class TargetsFederate {
         //log( "Zmodyfikowano pozycję celu, handle=" + targetObject.getRtiInstance());
     }
 
-    private void removeTargetObject() throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
-        rtiamb.deleteObjectInstance(struckTarget.getRtiInstance(),generateTag());
+    private void removeTargetObject(Target target) throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {
+        targets.remove(struckTarget);
+        rtiamb.deleteObjectInstance(target.getRtiInstance(),generateTag());
         struckTarget=null;
     }
 
