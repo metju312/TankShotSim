@@ -234,7 +234,23 @@ public class BulletsFederateAmbassador extends NullFederateAmbassador {
             }
         }else if(interactionClass.equals(federate.hitHandle))
         {
-            federate.destroyBullet();
+            try {
+                federate.destroyBullet();
+            } catch (RTIexception rtIexception) {
+                rtIexception.printStackTrace();
+            }
+        }else if(interactionClass.equals(federate.endSimulationHandle)) {
+            HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
+            try {
+                typeData.decode(theParameters.get(federate.federateNumberHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            int federateNumber = typeData.getValue();
+
+            if(federateNumber == 2){
+                federate.shouldStopRunning = true;
+            }
         }
 
         log( builder.toString() );

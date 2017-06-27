@@ -51,6 +51,9 @@ public class TargetsFederate {
     protected ObjectClassHandle terrainHandle;
     protected AttributeHandle shapeHandle;
 
+    protected InteractionClassHandle endSimulationHandle;
+    protected ParameterHandle federateNumberHandle;
+
     private boolean shouldGeneratePointsToAchieve = true;
     private boolean terrainExists = false;
 
@@ -182,7 +185,13 @@ public class TargetsFederate {
         attributes.add(shapeHandle);
         rtiamb.subscribeObjectClassAttributes(terrainHandle,attributes);
 
+        //Subskrycja na Koniec Symulacji
+        this.endSimulationHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.EndSimulation");
+        this.federateNumberHandle = rtiamb.getParameterHandle(endSimulationHandle,"FederateNumber");
+        rtiamb.subscribeInteractionClass(endSimulationHandle);
 
+        //Publikacja na Koniec Symulacji
+        rtiamb.publishInteractionClass(endSimulationHandle);
     }
 
     private void advanceTime( double timestep ) throws RTIexception
@@ -255,6 +264,7 @@ public class TargetsFederate {
                 e.printStackTrace();
             }
         }
+        endEnvironmentFederate();
     }
 
     protected void initializePositionsToAchieve() {
@@ -468,6 +478,14 @@ public class TargetsFederate {
     {
         return linePointB.distanceFrom(linePointA).crossProduct(point.distanceFrom(linePointA)).norm()
                 /linePointB.distanceFrom(linePointA).norm();
+    }
+
+    public void endEnvironmentFederate() throws RTIexception{
+        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
+        HLAinteger32BE federateNumberValue = encoderFactory.createHLAinteger32BE(4);
+        parameters.put( federateNumberHandle, federateNumberValue.toByteArray() );
+        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead );
+        rtiamb.sendInteraction(endSimulationHandle,parameters,generateTag(),time);
     }
 }
 

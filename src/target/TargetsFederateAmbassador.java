@@ -5,6 +5,7 @@ import bullet.BulletsFederate;
 import hla.rti1516e.*;
 import hla.rti1516e.encoding.*;
 import hla.rti1516e.exceptions.FederateInternalError;
+import hla.rti1516e.exceptions.RTIexception;
 import hla.rti1516e.time.HLAfloat64Time;
 
 import java.util.HashMap;
@@ -212,6 +213,18 @@ public class TargetsFederateAmbassador extends NullFederateAmbassador {
 //            } catch (RTIexception restoreInProgress) {
 //                restoreInProgress.printStackTrace();
 //            }
+        }else if(interactionClass.equals(federate.endSimulationHandle)) {
+            HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
+            try {
+                typeData.decode(theParameters.get(federate.federateNumberHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            int federateNumber = typeData.getValue();
+
+            if(federateNumber == 3){
+                running = false;
+            }
         }
 
         log( builder.toString() );

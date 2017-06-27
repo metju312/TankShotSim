@@ -292,33 +292,23 @@ public class EnvironmentFederateAmbassador extends NullFederateAmbassador {
 
         // print the handle
         builder.append( " handle=" + interactionClass );
-        if( interactionClass.equals("federate.servedHandle - znowu odpowienni handle w federacie") )
-        {
-            builder.append( " (DrinkServed)" );
-        }
+        if(interactionClass.equals(federate.endSimulationHandle)) {
+            HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
+            try {
+                typeData.decode(theParameters.get(federate.federateNumberHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            int federateNumber = typeData.getValue();
 
-        // print the tag
-        builder.append( ", tag=" + new String(tag) );
-        // print the time (if we have it) we'll get null if we are just receiving
-        // a forwarded call from the other reflect callback above
-        if( time != null )
-        {
-            builder.append( ", time=" + ((HLAfloat64Time)time).getValue() );
-        }
-
-        // print the parameer information
-        builder.append( ", parameterCount=" + theParameters.size() );
-        builder.append( "\n" );
-        for( ParameterHandle parameter : theParameters.keySet() )
-        {
-            // print the parameter handle
-            builder.append( "\tparamHandle=" );
-            builder.append( parameter );
-            // print the parameter value
-            builder.append( ", paramValue=" );
-            builder.append( theParameters.get(parameter).length );
-            builder.append( " bytes" );
-            builder.append( "\n" );
+            if(federateNumber == 4){
+//                try {
+//                    federate.endEnvironmentFederate();
+//                } catch (RTIexception rtIexception) {
+//                    rtIexception.printStackTrace();
+//                }
+                running = false;
+            }
         }
 
         log( builder.toString() );

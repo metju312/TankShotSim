@@ -44,6 +44,8 @@ public class BulletsFederate {
     protected double temperature;
     protected double pressure;
 
+    protected boolean shouldStopRunning = false;
+
 
     protected ObjectClassHandle bulletHandle;
     protected AttributeHandle bulletIdHandle;
@@ -64,6 +66,9 @@ public class BulletsFederate {
     protected ParameterHandle hitTargetIdHandle;
     protected ParameterHandle hitDirectionHandle;
     protected ParameterHandle hitTypeHandle;
+
+    protected InteractionClassHandle endSimulationHandle;
+    protected ParameterHandle federateNumberHandle;
 
     protected ObjectInstanceHandle bulletInstanceHandle;
     protected ObjectInstanceHandle atmosphereInstanceHandle;
@@ -209,6 +214,14 @@ public class BulletsFederate {
         this.hitDirectionHandle = rtiamb.getParameterHandle(hitHandle,"HitDirection");
         this.hitTypeHandle = rtiamb.getParameterHandle(hitHandle,"Type");
         rtiamb.subscribeInteractionClass(hitHandle);
+
+        //Subskrycja na Koniec Symulacji
+        this.endSimulationHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.EndSimulation");
+        this.federateNumberHandle = rtiamb.getParameterHandle(endSimulationHandle,"FederateNumber");
+        rtiamb.subscribeInteractionClass(endSimulationHandle);
+
+        //Publikacja na Koniec Symulacji
+        rtiamb.publishInteractionClass(endSimulationHandle);
     }
 
     private void advanceTime( double timestep ) throws RTIexception
@@ -269,6 +282,7 @@ public class BulletsFederate {
                 e.printStackTrace();
             }
         }
+        endTargetsFederate();
     }
 
     private void registerBulletObject() throws SaveInProgress, RestoreInProgress, ObjectClassNotPublished, ObjectClassNotDefined, FederateNotExecutionMember, RTIinternalError, NotConnected, ObjectInstanceNotKnown, AttributeNotDefined, AttributeNotOwned {
@@ -315,9 +329,20 @@ public class BulletsFederate {
         log("pocisk poruszył sie na pozycje "+ bulletPosition.toStirng()+" z prędkością = "+bulletVelocity.norm());
     }
 
-    public void destroyBullet()
+    public void destroyBullet()throws RTIexception
     {
         bulletInTheAir=false;
+        if(shouldStopRunning){
+            fedamb.running = false;
+        }
+    }
+
+    private void endTargetsFederate() throws RTIexception{
+        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
+        HLAinteger32BE federateNumberValue = encoderFactory.createHLAinteger32BE(3);
+        parameters.put( federateNumberHandle, federateNumberValue.toByteArray() );
+        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead );
+        rtiamb.sendInteraction(endSimulationHandle,parameters,generateTag(),time);
     }
 
     private void deleteBullet() throws ObjectInstanceNotKnown, RestoreInProgress, DeletePrivilegeNotHeld, SaveInProgress, FederateNotExecutionMember, RTIinternalError, NotConnected {

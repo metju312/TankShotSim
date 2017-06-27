@@ -11,9 +11,7 @@ import hla.rti1516e.time.HLAfloat64Interval;
 import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
 import target.Target;
-import zzzexample.ExampleFederateAmbassador;
 
-import javax.smartcardio.ATR;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
@@ -27,7 +25,7 @@ import java.util.Random;
 
 public class TankFederate
 {
-    public int ammo = 20;
+    public int ammo = 2;
     public final double shotChance = 0.05;
 
     private final int reloadTime = 20;
@@ -55,6 +53,9 @@ public class TankFederate
     protected ParameterHandle shotPositionHandle;
     protected ParameterHandle directionHandle;
     protected ParameterHandle typeHandle;
+
+    protected InteractionClassHandle endSimulationHandle;
+    protected ParameterHandle federateNumberHandle;
 
     //protected double[][] terrain;
     protected Map<Integer,Map<Integer,Double>> terrain;
@@ -198,6 +199,10 @@ public class TankFederate
         this.typeHandle = rtiamb.getParameterHandle(shotHandle,"Type");
         rtiamb.publishInteractionClass(shotHandle);
 
+        //Publikacja Końca Symulacji
+        this.endSimulationHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.EndSimulation");
+        this.federateNumberHandle = rtiamb.getParameterHandle(endSimulationHandle,"FederateNumber");
+        rtiamb.publishInteractionClass(endSimulationHandle);
     }
 
     private void advanceTime( double timestep) throws RTIexception
@@ -277,6 +282,15 @@ public class TankFederate
             }
 
         }
+        endBulletsFederate();
+    }
+
+    private void endBulletsFederate() throws RTIexception{
+        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
+        HLAinteger32BE federateNumberValue = encoderFactory.createHLAinteger32BE(2);
+        parameters.put( federateNumberHandle, federateNumberValue.toByteArray() );
+        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead );
+        rtiamb.sendInteraction(endSimulationHandle,parameters,generateTag(),time);
     }
 
     private void moveTank()
@@ -431,7 +445,4 @@ public class TankFederate
             log(builder.toString());
         }
     }
-
-
-
 }

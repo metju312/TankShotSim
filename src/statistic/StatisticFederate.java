@@ -51,6 +51,9 @@ public class StatisticFederate {
     protected AttributeHandle targetIdHandle;
     protected AttributeHandle targetPositionHandle;
 
+    protected InteractionClassHandle endSimulationHandle;
+    protected ParameterHandle federateNumberHandle;
+
     // Metody RTI
     private void initializeFederate(String federateName, String federationName) throws Exception{
         log("Tworzenie abasadorów i połączenia");
@@ -178,6 +181,11 @@ public class StatisticFederate {
         attributes.add(targetIdHandle);
         attributes.add(targetPositionHandle);
         rtiamb.subscribeObjectClassAttributes(targetHandle, attributes);
+
+        //Subskrycja na Koniec Symulacji
+        this.endSimulationHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.EndSimulation");
+        this.federateNumberHandle = rtiamb.getParameterHandle(endSimulationHandle,"FederateNumber");
+        rtiamb.subscribeInteractionClass(endSimulationHandle);
     }
 
     private void advanceTime( double timestep ) throws RTIexception

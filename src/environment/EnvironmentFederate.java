@@ -78,6 +78,9 @@ public class EnvironmentFederate {
     protected AttributeHandle targetIdHandle;
     protected AttributeHandle targetPositionHandle;
 
+    protected InteractionClassHandle endSimulationHandle;
+    protected ParameterHandle federateNumberHandle;
+
 
     protected List<Target> targets = new ArrayList<>();
     protected Map<ObjectInstanceHandle,Integer> targetsInstances;
@@ -266,6 +269,14 @@ public class EnvironmentFederate {
         attributes.add(targetPositionHandle);
         rtiamb.subscribeObjectClassAttributes(targetHandle, attributes);
 
+        //Subskrycja na Koniec Symulacji
+        this.endSimulationHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.EndSimulation");
+        this.federateNumberHandle = rtiamb.getParameterHandle(endSimulationHandle,"FederateNumber");
+        rtiamb.subscribeInteractionClass(endSimulationHandle);
+
+        //Publikacja na Koniec Symulacji
+        rtiamb.publishInteractionClass(endSimulationHandle);
+
     }
 
     private void advanceTime( double timestep ) throws RTIexception
@@ -328,6 +339,15 @@ public class EnvironmentFederate {
                 e.printStackTrace();
             }
         }
+        endStatisticsFederate();
+    }
+
+    private void endStatisticsFederate() throws RTIexception{
+        ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
+        HLAinteger32BE federateNumberValue = encoderFactory.createHLAinteger32BE(5);
+        parameters.put( federateNumberHandle, federateNumberValue.toByteArray() );
+        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead );
+        rtiamb.sendInteraction(endSimulationHandle,parameters,generateTag(),time);
     }
 
     private void setUpEnvironment() throws RTIexception

@@ -210,6 +210,23 @@ public class StatisticFederateAmbassador extends NullFederateAmbassador {
             builder.append( " Czołg trafił ! " );
             federate.hitCount++;
             federate.logStatistics();
+        }else if(interactionClass.equals(federate.endSimulationHandle)) {
+            HLAinteger32BE typeData = federate.encoderFactory.createHLAinteger32BE();
+            try {
+                typeData.decode(theParameters.get(federate.federateNumberHandle));
+            } catch (DecoderException e) {
+                e.printStackTrace();
+            }
+            int federateNumber = typeData.getValue();
+
+            if(federateNumber == 5){
+//                try {
+//                    federate.endEnvironmentFederate();
+//                } catch (RTIexception rtIexception) {
+//                    rtIexception.printStackTrace();
+//                }
+                running = false;
+            }
         }
 
         log( builder.toString() );
